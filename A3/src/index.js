@@ -28,7 +28,7 @@ async function main() {
     let plyData;
     let meshBuffers;
     try {
-        plyData = await loadPLY('../assets/airplane.ply');
+        plyData = await loadPLY('../assets/beethoven.ply');
         meshBuffers = initBuffers(gl, plyData);
     } catch (e) {
         console.error("Failed to load PLY", e);

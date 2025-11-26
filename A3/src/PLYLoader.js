@@ -47,6 +47,57 @@ function recalculateNormals(positions, indices) {
 }
 
 /**
+ * Normalizes the geometry by centering it at (0,0,0) and scaling it
+ * so its largest dimension is exactly 1.0.
+ *
+ * @param {Float32Array} positions - The vertex positions array [x, y, z, x, y, z, ...]
+ */
+function normalizeGeometry(positions) {
+    if (positions.length === 0) return;
+
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+    // 1. Calculate Bounding Box
+    for (let i = 0; i < positions.length; i += 3) {
+        const x = positions[i];
+        const y = positions[i + 1];
+        const z = positions[i + 2];
+
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (z < minZ) minZ = z;
+
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+        if (z > maxZ) maxZ = z;
+    }
+
+    // 2. Calculate Center and Size
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const centerZ = (minZ + maxZ) / 2;
+
+    const sizeX = maxX - minX;
+    const sizeY = maxY - minY;
+    const sizeZ = maxZ - minZ;
+
+    // Find the largest dimension
+    const maxDim = Math.max(sizeX, sizeY, sizeZ);
+    // Determine scale factor (target size 1.0)
+    const scale = maxDim > 0 ? 1.0 / maxDim : 1.0;
+
+    // 3. Center and Scale in place
+    for (let i = 0; i < positions.length; i += 3) {
+        positions[i] = (positions[i] - centerX) * scale;
+        positions[i + 1] = (positions[i + 1] - centerY) * scale;
+        positions[i + 2] = (positions[i + 2] - centerZ) * scale;
+    }
+
+    console.log(`Normalized Geometry: Center moved from [${centerX.toFixed(2)}, ${centerY.toFixed(2)}, ${centerZ.toFixed(2)}] to Origin. Scaled by ${scale.toFixed(4)}.`);
+}
+
+/**
  * A simple .ply file parser.
  * This parser assumes the file is in ASCII format.
  * It extracts vertex positions and face indices, supporting both triangles and quads. It also extracts normals if present else all
@@ -122,7 +173,6 @@ function parsePLY(plyText) {
                 break;
 
             case STATE.READING_FACES:
-                // --- THIS IS THE UPDATED LOGIC ---
                 const numVerticesInFace = parseInt(parts[0]);
 
                 if (numVerticesInFace === 3) {
@@ -144,7 +194,6 @@ function parsePLY(plyText) {
                     indices.push(parseInt(parts[3])); // v2
                     indices.push(parseInt(parts[4])); // v3
                 }
-                // --- END UPDATED LOGIC ---
 
                 facesRead++;
 
@@ -156,15 +205,13 @@ function parsePLY(plyText) {
         }
     }
 
-    // console.log(`PLY Parser Results (${vertexCount}v, ${faceCount}f):
-    //   - Vertices read: ${ verticesRead } (Positions: ${ positions.length })
-    //   - Faces read:   ${ facesRead } (Indices: ${ indices.length })`);
-    //   - Normals read: ${ normals.length }`);
-
     // Convert to TypedArrays first
     const posArray = new Float32Array(positions);
     const idxArray = new Uint16Array(indices);
     let normArray = new Float32Array(normals);
+
+    // --- FIX: Center and Scale Geometry ---
+    normalizeGeometry(posArray);
 
     // If the file didn't have normals, calculate them now
     if (!foundNormals) {
@@ -182,11 +229,10 @@ function parsePLY(plyText) {
 
 /**
  * Fetches a .ply file from the given URL and parses it.
- * (This function remains unchanged)
  *
  * @param {string} url - The path to the .ply file.
  * @returns {Promise<object>} A promise that resolves with the parsed geometry
- * { positions: Float32Array, indices: Uint16Array }.
+ * { positions: Float32Array, indices: Uint16Array, normals: Float32Array }.
  */
 export async function loadPLY(url) {
     try {
