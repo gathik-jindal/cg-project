@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Assignment 3</title>
+    <script src="src/index.js" type="module"></script>
+</head>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background-color: #333;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        display: flex;
+        /* Use row-reverse to keep layout but match visual request */
+        flex-direction: row;
+        overflow: hidden;
+        height: 100vh;
+    }
+
+    #container {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        /* position: relative; <-- REMOVED FROM HERE */
+    }
+
+    #canvas-wrapper {
+        position: relative;
+        /* This is now the relative parent */
+        width: 100%;
+        /* It takes the size the canvas used to */
+        height: 100%;
+        max-width: 100%;
+        display: block;
+        /* Behave like a block */
+        border-radius: 8px;
+        /* Give the wrapper the border radius */
+    }
+
+    #glCanvas {
+        border: 1px solid #555;
+        background-color: #000;
+        display: block;
+        width: 100%;
+        /* Fill the new wrapper */
+        height: 100%;
+        /* Fill the new wrapper */
+        border-radius: 8px;
+        /* Keep radius on canvas too */
+    }
+</style>
+
+<body>
+    <div id="container">
+        <div id="canvas-wrapper">
+            <canvas id="glCanvas"></canvas>
+        </div>
+    </div>
+</body>
+
+</html>
