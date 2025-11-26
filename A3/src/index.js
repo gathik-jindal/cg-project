@@ -57,9 +57,9 @@ async function main() {
         const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
         mat4.perspective(projectionMatrix, fieldOfView, aspect, 0.1, 100.0);
 
-        // View Matrix (Camera) - Move back 5 units
+        // View Matrix (Camera)
         mat4.identity(viewMatrix);
-        mat4.translate(viewMatrix, viewMatrix, [0.0, 0.0, -5.0]);
+        mat4.translate(viewMatrix, viewMatrix, [0.0, 0.0, appState.camera.z]); // Used a state variable here
 
         // ModelView Matrix (Camera + Object Rotation)
         mat4.copy(modelViewMatrix, viewMatrix);
@@ -143,5 +143,20 @@ function setupControls(canvas) {
             console.log("Switched to:", appState.shadingMode);
         }
     });
+
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault(); // Stop the page from scrolling
+
+        // Adjust zoom speed (0.01 is a good sensitivity)
+        const zoomSpeed = 0.01;
+        appState.camera.z -= e.deltaY * zoomSpeed;
+
+        // Clamp values so you don't go through the object or too far away
+        // Note: Camera is at negative Z, so "max" is actually the smaller negative number logic
+        if (appState.camera.z > appState.camera.min) appState.camera.z = appState.camera.min;
+        if (appState.camera.z < appState.camera.max) appState.camera.z = appState.camera.max;
+
+        console.log("Zoom Level:", appState.camera.z);
+    }, { passive: false }); // passive: false is required to use preventDefault()
 }
 main();
