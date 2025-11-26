@@ -2,7 +2,7 @@ import { loadPLY } from './PLYLoader.js';
 import { createProgram, resizeCanvasToDisplaySize } from './webgl-utils.js';
 import { appState } from './state.js';
 import { initBuffers } from './buffers.js';
-import { vsGouraud, fsGouraud } from './shaders.js';
+import { vsGouraud, fsGouraud, vsPhong, fsPhong } from './shaders.js';
 
 const { mat4, mat3, vec3 } = window.glMatrix;
 
@@ -14,6 +14,7 @@ const viewMatrix = mat4.create();
 
 // Programs
 let gouraudProgram = null;
+let phongProgram = null;
 
 async function main() {
     const canvas = document.querySelector("#glCanvas");
@@ -37,6 +38,7 @@ async function main() {
 
     // 2. Initialize Shaders
     gouraudProgram = createProgram(gl, vsGouraud, fsGouraud);
+    phongProgram = createProgram(gl, vsPhong, fsPhong);
 
     // 3. Setup Controls
     setupControls(canvas);
@@ -74,31 +76,35 @@ async function main() {
         const lightPosView = vec3.create();
         vec3.transformMat4(lightPosView, lightPosWorld, viewMatrix);
 
-        // --- Drawing ---
+        // --- SWITCH LOGIC ---
+        let programToUse;
+
         if (appState.shadingMode === 'gouraud') {
-            gl.useProgram(gouraudProgram);
-
-            // Bind Uniforms
-            const uModelView = gl.getUniformLocation(gouraudProgram, 'u_modelViewMatrix');
-            const uProj = gl.getUniformLocation(gouraudProgram, 'u_projectionMatrix');
-            const uNormal = gl.getUniformLocation(gouraudProgram, 'u_normalMatrix');
-
-            gl.uniformMatrix4fv(uModelView, false, modelViewMatrix);
-            gl.uniformMatrix4fv(uProj, false, projectionMatrix);
-            gl.uniformMatrix3fv(uNormal, false, normalMatrix);
-
-            // Lighting Uniforms
-            gl.uniform3fv(gl.getUniformLocation(gouraudProgram, 'u_lightPosition'), lightPosView);
-            gl.uniform3fv(gl.getUniformLocation(gouraudProgram, 'u_lightColor'), appState.lights[0].color);
-
-            // Material Uniforms (from state.js)
-            gl.uniform1f(gl.getUniformLocation(gouraudProgram, 'u_ka'), appState.material.ka);
-            gl.uniform1f(gl.getUniformLocation(gouraudProgram, 'u_kd'), appState.material.kd);
-            gl.uniform1f(gl.getUniformLocation(gouraudProgram, 'u_ks'), appState.material.ks);
-            gl.uniform1f(gl.getUniformLocation(gouraudProgram, 'u_shininess'), appState.material.shininess);
+            programToUse = gouraudProgram;
+        } else {
+            programToUse = phongProgram;
         }
 
-        // Draw Call
+        gl.useProgram(programToUse);
+
+        // --- BIND UNIFORMS (Common to both) ---
+        // Since variable names are identical in both shaders, this logic is clean.
+
+        // Matrices
+        gl.uniformMatrix4fv(gl.getUniformLocation(programToUse, 'u_modelViewMatrix'), false, modelViewMatrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(programToUse, 'u_projectionMatrix'), false, projectionMatrix);
+        gl.uniformMatrix3fv(gl.getUniformLocation(programToUse, 'u_normalMatrix'), false, normalMatrix);
+
+        // Light & Material
+        gl.uniform3fv(gl.getUniformLocation(programToUse, 'u_lightPosition'), lightPosView);
+        gl.uniform3fv(gl.getUniformLocation(programToUse, 'u_lightColor'), appState.lights[0].color);
+
+        gl.uniform1f(gl.getUniformLocation(programToUse, 'u_ka'), appState.material.ka);
+        gl.uniform1f(gl.getUniformLocation(programToUse, 'u_kd'), appState.material.kd);
+        gl.uniform1f(gl.getUniformLocation(programToUse, 'u_ks'), appState.material.ks);
+        gl.uniform1f(gl.getUniformLocation(programToUse, 'u_shininess'), appState.material.shininess);
+
+        // Draw
         gl.bindVertexArray(meshBuffers.vao);
         gl.drawElements(gl.TRIANGLES, meshBuffers.elementCount, gl.UNSIGNED_SHORT, 0);
 
@@ -128,6 +134,14 @@ function setupControls(canvas) {
         appState.rotation.x += deltaY * 0.01;
         lastX = e.clientX;
         lastY = e.clientY;
+    });
+
+    window.addEventListener('keydown', (e) => {
+        // Toggle Shading Model
+        if (e.key === 's' || e.key === 'S') {
+            appState.shadingMode = appState.shadingMode === 'gouraud' ? 'phong' : 'gouraud';
+            console.log("Switched to:", appState.shadingMode);
+        }
     });
 }
 main();
