@@ -1,10 +1,59 @@
+function recalculateNormals(positions, indices) {
+    const normals = new Float32Array(positions.length);
+
+    // 1. Accumulate Face Normals
+    for (let i = 0; i < indices.length; i += 3) {
+        const i0 = indices[i];
+        const i1 = indices[i + 1];
+        const i2 = indices[i + 2];
+
+        // Get vertices
+        const v0x = positions[i0 * 3], v0y = positions[i0 * 3 + 1], v0z = positions[i0 * 3 + 2];
+        const v1x = positions[i1 * 3], v1y = positions[i1 * 3 + 1], v1z = positions[i1 * 3 + 2];
+        const v2x = positions[i2 * 3], v2y = positions[i2 * 3 + 1], v2z = positions[i2 * 3 + 2];
+
+        // Edge vectors
+        const e1x = v1x - v0x, e1y = v1y - v0y, e1z = v1z - v0z;
+        const e2x = v2x - v0x, e2y = v2y - v0y, e2z = v2z - v0z;
+
+        // Cross Product (Face Normal)
+        const nx = e1y * e2z - e1z * e2y;
+        const ny = e1z * e2x - e1x * e2z;
+        const nz = e1x * e2y - e1y * e2x;
+
+        // Add to the vertex normals
+        normals[i0 * 3] += nx; normals[i0 * 3 + 1] += ny; normals[i0 * 3 + 2] += nz;
+        normals[i1 * 3] += nx; normals[i1 * 3 + 1] += ny; normals[i1 * 3 + 2] += nz;
+        normals[i2 * 3] += nx; normals[i2 * 3 + 1] += ny; normals[i2 * 3 + 2] += nz;
+    }
+
+    // 2. Normalize results
+    for (let i = 0; i < normals.length; i += 3) {
+        const x = normals[i];
+        const y = normals[i + 1];
+        const z = normals[i + 2];
+
+        // Avoid division by zero
+        let len = Math.sqrt(x * x + y * y + z * z);
+        if (len > 0) {
+            len = 1.0 / len; // multiplication is faster than division
+            normals[i] *= len;
+            normals[i + 1] *= len;
+            normals[i + 2] *= len;
+        }
+    }
+
+    return normals;
+}
+
 /**
  * A simple .ply file parser.
  * This parser assumes the file is in ASCII format.
- * It extracts vertex positions and face indices, supporting both triangles and quads.
+ * It extracts vertex positions and face indices, supporting both triangles and quads. It also extracts normals if present else all
+ * are replaced with (0,0,0).
  *
  * @param {string} plyText - The raw text content of the .ply file.
- * @returns {object} An object with { positions: Float32Array, indices: Uint16Array }
+ * @returns {object} An object with { positions: Float32Array, indices: Uint16Array, normals: Float32Array }.
  */
 function parsePLY(plyText) {
     const lines = plyText.split('\n');
@@ -24,6 +73,8 @@ function parsePLY(plyText) {
         READING_FACES: 2
     };
     let currentState = STATE.HEADER;
+
+    let foundNormals = false;
 
     for (const line of lines) {
         const trimmedLine = line.trim();
@@ -56,6 +107,7 @@ function parsePLY(plyText) {
                     normals.push(parseFloat(parts[3])); // nx
                     normals.push(parseFloat(parts[4])); // ny
                     normals.push(parseFloat(parts[5])); // nz
+                    foundNormals = true;
                 } else {
                     // No normal data found. Push a default (0,0,0).
                     // This will look bad, but won't crash.
@@ -105,16 +157,28 @@ function parsePLY(plyText) {
     }
 
     // console.log(`PLY Parser Results (${vertexCount}v, ${faceCount}f):
-    //     - Vertices read: ${ verticesRead } (Positions: ${ positions.length })
+    //   - Vertices read: ${ verticesRead } (Positions: ${ positions.length })
     //   - Faces read:   ${ facesRead } (Indices: ${ indices.length })`);
+    //   - Normals read: ${ normals.length }`);
+
+    // Convert to TypedArrays first
+    const posArray = new Float32Array(positions);
+    const idxArray = new Uint16Array(indices);
+    let normArray = new Float32Array(normals);
+
+    // If the file didn't have normals, calculate them now
+    if (!foundNormals) {
+        console.log("Generating missing normals...");
+        normArray = recalculateNormals(posArray, idxArray);
+        console.log("Normals generated.");
+    }
 
     return {
-        positions: new Float32Array(positions),
-        indices: new Uint16Array(indices),
-        normals: new Float32Array(normals),
+        positions: posArray,
+        indices: idxArray,
+        normals: normArray,
     };
 }
-
 
 /**
  * Fetches a .ply file from the given URL and parses it.
