@@ -2,19 +2,18 @@ import { loadPLY } from './PLYLoader.js';
 import { createProgram, resizeCanvasToDisplaySize } from './webgl-utils.js';
 import { appState } from './state.js';
 import { initBuffers } from './buffers.js';
+import { vsGouraud, fsGouraud } from './shaders.js';
 
-const { mat4, mat3, toRadian } = window.glMatrix;
-console.log("glMatrix v3 loaded:", mat4, mat3);
+const { mat4, mat3, vec3 } = window.glMatrix;
 
-// Matrices (Allocated once to avoid garbage collection)
+// Matrices
 const projectionMatrix = mat4.create();
 const modelViewMatrix = mat4.create();
-const normalMatrix = mat3.create(); // 3x3 matrix for normals
+const normalMatrix = mat3.create();
+const viewMatrix = mat4.create();
 
-// Shader Program Placeholders
-let currentProgram = null;
+// Programs
 let gouraudProgram = null;
-let phongProgram = null;
 
 async function main() {
     const canvas = document.querySelector("#glCanvas");
@@ -31,49 +30,77 @@ async function main() {
     try {
         plyData = await loadPLY('../assets/airplane.ply');
         meshBuffers = initBuffers(gl, plyData);
-        console.log("Geometry Loaded & Buffered");
     } catch (e) {
         console.error("Failed to load PLY", e);
         return;
     }
 
-    // 2. Setup Controls
+    // 2. Initialize Shaders
+    gouraudProgram = createProgram(gl, vsGouraud, fsGouraud);
+
+    // 3. Setup Controls
     setupControls(canvas);
 
-    // 3. Render Loop
+    // 4. Render Loop
     function render(time) {
         resizeCanvasToDisplaySize(gl.canvas);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-
         gl.clearColor(0.1, 0.1, 0.1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE); // Good practice for 3D (Removes faces that are not visible to the viewer)
 
-        // --- A. Compute Projection Matrix ---
-        const fieldOfView = 45 * Math.PI / 180; // in radians
+        // --- Calculate Matrices ---
+        const fieldOfView = 45 * Math.PI / 180;
         const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
-        const zNear = 0.1;
-        const zFar = 100.0;
-        mat4.perspective(projectionMatrix, fieldOfView, aspect, zNear, zFar);
+        mat4.perspective(projectionMatrix, fieldOfView, aspect, 0.1, 100.0);
 
-        // --- B. Compute Model-View Matrix ---
-        mat4.identity(modelViewMatrix);
+        // View Matrix (Camera) - Move back 5 units
+        mat4.identity(viewMatrix);
+        mat4.translate(viewMatrix, viewMatrix, [0.0, 0.0, -5.0]);
 
-        // Move camera back so we can see the object (View transform)
-        mat4.translate(modelViewMatrix, modelViewMatrix, [0.0, 0.0, -5.0]);
-
-        // Rotate object based on appState (Model transform)
+        // ModelView Matrix (Camera + Object Rotation)
+        mat4.copy(modelViewMatrix, viewMatrix);
         mat4.rotate(modelViewMatrix, modelViewMatrix, appState.rotation.x, [1, 0, 0]);
         mat4.rotate(modelViewMatrix, modelViewMatrix, appState.rotation.y, [0, 1, 0]);
 
-        // --- C. Compute Normal Matrix ---
-        // Invert and Transpose the ModelView matrix
-        // This is required so lighting works correctly when scaling/rotating
+        // Normal Matrix (Invert + Transpose of ModelView)
         mat3.normalFromMat4(normalMatrix, modelViewMatrix);
 
-        // --- D. Draw (Placeholder) ---
-        // Here we will eventually bind the shader, set uniforms, and draw.
-        // For now, we just have the matrices ready.
+        // --- Light Position Handling ---
+        // Transform the light position defined in state.js into View Space
+        // We assume the light in state.js is "World Space"
+        const lightPosWorld = appState.lights[0].position; // Using first light for now
+        const lightPosView = vec3.create();
+        vec3.transformMat4(lightPosView, lightPosWorld, viewMatrix);
+
+        // --- Drawing ---
+        if (appState.shadingMode === 'gouraud') {
+            gl.useProgram(gouraudProgram);
+
+            // Bind Uniforms
+            const uModelView = gl.getUniformLocation(gouraudProgram, 'u_modelViewMatrix');
+            const uProj = gl.getUniformLocation(gouraudProgram, 'u_projectionMatrix');
+            const uNormal = gl.getUniformLocation(gouraudProgram, 'u_normalMatrix');
+
+            gl.uniformMatrix4fv(uModelView, false, modelViewMatrix);
+            gl.uniformMatrix4fv(uProj, false, projectionMatrix);
+            gl.uniformMatrix3fv(uNormal, false, normalMatrix);
+
+            // Lighting Uniforms
+            gl.uniform3fv(gl.getUniformLocation(gouraudProgram, 'u_lightPosition'), lightPosView);
+            gl.uniform3fv(gl.getUniformLocation(gouraudProgram, 'u_lightColor'), appState.lights[0].color);
+
+            // Material Uniforms (from state.js)
+            gl.uniform1f(gl.getUniformLocation(gouraudProgram, 'u_ka'), appState.material.ka);
+            gl.uniform1f(gl.getUniformLocation(gouraudProgram, 'u_kd'), appState.material.kd);
+            gl.uniform1f(gl.getUniformLocation(gouraudProgram, 'u_ks'), appState.material.ks);
+            gl.uniform1f(gl.getUniformLocation(gouraudProgram, 'u_shininess'), appState.material.shininess);
+        }
+
+        // Draw Call
+        gl.bindVertexArray(meshBuffers.vao);
+        gl.drawElements(gl.TRIANGLES, meshBuffers.elementCount, gl.UNSIGNED_SHORT, 0);
 
         requestAnimationFrame(render);
     }
@@ -85,7 +112,6 @@ function setupControls(canvas) {
     let lastX = 0;
     let lastY = 0;
 
-    // Mouse control for rotation
     canvas.addEventListener('mousedown', (e) => {
         isDragging = true;
         lastX = e.clientX;
@@ -98,22 +124,10 @@ function setupControls(canvas) {
         if (!isDragging) return;
         const deltaX = e.clientX - lastX;
         const deltaY = e.clientY - lastY;
-
-        // Update state
         appState.rotation.y += deltaX * 0.01;
         appState.rotation.x += deltaY * 0.01;
-
         lastX = e.clientX;
         lastY = e.clientY;
     });
-
-    // Keyboard for shader toggling
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 's' || e.key === 'S') {
-            appState.shadingMode = appState.shadingMode === 'gouraud' ? 'phong' : 'gouraud';
-            console.log("Switched to:", appState.shadingMode);
-        }
-    });
 }
-
 main();
