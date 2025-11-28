@@ -158,7 +158,6 @@ async function main() {
 }
 
 function setupControls(canvas) {
-    // ... (Mouse/Zoom controls remain same) ...
     let isDragging = false;
     let lastX = 0, lastY = 0;
     canvas.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
