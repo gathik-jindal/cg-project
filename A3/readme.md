@@ -26,6 +26,11 @@
 
 ## Controls
 
-- **Mouse Drag**: Rotate the 3D object.
-- **'S' Key**: Toggle between Gouraud and Phong shading models.
-- **Mouse Wheel**: Zoom in and out.
+- `S`: Toggle Gouraud (Vertex) vs Phong (Pixel).
+- `B`: Toggle Standard Phong Math vs Blinn-Phong Math (Only works when in Phong mode).
+- `1`: Toggle Light 1.
+- `2`: Toggle Light 2.
+- `Z` / `X`: Increase/Decrease Diffuse Strength.
+- `C` / `V`: Increase/Decrease Specular Strength.
+- `Mouse`: Rotate scene.
+- `Scroll`: Zoom.
