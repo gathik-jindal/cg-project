@@ -1,5 +1,19 @@
 # Assignment 3
 
+A WebGL application demonstrating 3D object rendering with various shading techniques.
+
+## Screenshot
+
+<!-- TODO: Add screenshot of working A3 application below -->
+<!-- Replace the path below with the actual screenshot path once added -->
+*Screenshot placeholder - add screenshot.png to assets/*
+
+<!--
+![A3 Screenshot](assets/screenshot.png)
+-->
+
+## About
+
 `assets/` already contains all the `.ply` object files we will need for this assignment (downloaded from the link the assignment provided [here](https://people.sc.fsu.edu/~jburkardt/data/ply/ply.html))
 
 ## How to run
