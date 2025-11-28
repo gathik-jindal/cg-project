@@ -1,5 +1,6 @@
 export const appState = {
-    shadingMode: 'phong', // Default to best looking
+    shadingMode: 'phong', // 'gouraud' or 'phong'
+    useBlinn: true,       // true = Blinn-Phong, false = Standard Phong
     camera: { z: -5.0, min: -2.0, max: -20.0 },
 
     // Lighting Toggle
@@ -8,10 +9,10 @@ export const appState = {
     // Global Light Settings
     lights: [
         // Light 1: White/Warm Light from Top-Right
-        { position: [10.0, 10.0, 10.0], color: [1.0, 1.0, 1.0], enabled: true },
+        { position: [2.0, 2.0, 2.0], color: [1.0, 1.0, 1.0], enabled: true },
 
-        // Light 2: Blue/Cool Light from Bottom-Left
-        { position: [-10.0, -5.0, 5.0], color: [0.2, 0.2, 1.0], enabled: true }
+        // Light 2: Green/Cool Light from Bottom-Left
+        { position: [-2.5, -1.25, 1.25], color: [0.0, 1.0, 0.2], enabled: true }
     ],
 
     // List of Objects in the scene
@@ -37,6 +38,8 @@ export const appState = {
             material: { ka: 0.1, kd: 0.6, ks: 0.8, shininess: 32.0 }
         }
     ],
+
+    material: { ka: 0.1, kd: 0.6, ks: 0.8, shininess: 32.0 },
 
     // Camera/Model transform basics
     rotation: { x: 0, y: 0 },

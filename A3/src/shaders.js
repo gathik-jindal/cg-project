@@ -108,13 +108,17 @@ struct Light {
 in vec3 v_normal;
 in vec3 v_viewPosition;
 
-uniform Light u_lights[MAX_LIGHTS]; // <--- Array of Lights
+uniform Light u_lights[MAX_LIGHTS];
 uniform vec3 u_objectColor;
 
+// Material Props
 uniform float u_ka;
 uniform float u_kd;
 uniform float u_ks;
 uniform float u_shininess;
+
+// Toggle: 0 = Standard Phong (Reflection), 1 = Blinn-Phong (Halfway)
+uniform bool u_useBlinn; 
 
 out vec4 fragColor;
 
@@ -123,9 +127,51 @@ void main() {
     vec3 viewPos = v_viewPosition;
     vec3 V = normalize(-viewPos);
 
-    ${LIGHT_LOOP_LOGIC}
+    vec3 totalAmbient = vec3(0.0);
+    vec3 totalDiffuse = vec3(0.0);
+    vec3 totalSpecular = vec3(0.0);
+
+    for(int i = 0; i < MAX_LIGHTS; i++) {
+        vec3 L = normalize(u_lights[i].position - viewPos);
+
+        // Ambient
+        totalAmbient += (u_ka * u_lights[i].color);
+
+        // Diffuse
+        float diff = max(dot(N, L), 0.0);
+        totalDiffuse += (u_kd * diff * u_lights[i].color);
+
+        // Specular Choice
+        float spec = 0.0;
+        if(u_useBlinn) {
+            // Blinn-Phong (Halfway Vector)
+            vec3 H = normalize(L + V);
+            spec = pow(max(dot(N, H), 0.0), u_shininess);
+        } else {
+            // Standard Phong (Reflection Vector)
+            vec3 R = reflect(-L, N); 
+            spec = pow(max(dot(R, V), 0.0), u_shininess);
+        }
+        totalSpecular += (u_ks * spec * u_lights[i].color);
+    }
 
     vec3 result = (totalAmbient + totalDiffuse) * u_objectColor + totalSpecular;
     fragColor = vec4(result, 1.0);
 }
 `;
+
+export const vsSimple = `#version 300 es
+layout(location = 0) in vec3 a_position;
+uniform mat4 u_modelViewMatrix;
+uniform mat4 u_projectionMatrix;
+void main() {
+    gl_Position = u_projectionMatrix * u_modelViewMatrix * vec4(a_position, 1.0);
+}`;
+
+export const fsSimple = `#version 300 es
+precision mediump float;
+uniform vec3 u_color;
+out vec4 fragColor;
+void main() {
+    fragColor = vec4(u_color, 1.0);
+}`;
