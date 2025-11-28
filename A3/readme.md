@@ -4,13 +4,8 @@ A WebGL application demonstrating 3D object rendering with various shading techn
 
 ## Screenshot
 
-<!-- TODO: Add screenshot of working A3 application below -->
-<!-- Replace the path below with the actual screenshot path once added -->
-*Screenshot placeholder - add screenshot.png to assets/*
+![A3 Screenshot](ss.png)
 
-<!--
-![A3 Screenshot](assets/screenshot.png)
--->
 
 ## About
 
