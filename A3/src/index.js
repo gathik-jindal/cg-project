@@ -6,157 +6,157 @@ import { vsGouraud, fsGouraud, vsPhong, fsPhong } from './shaders.js';
 
 const { mat4, mat3, vec3 } = window.glMatrix;
 
-// Matrices
+// Matrices (Reusable)
 const projectionMatrix = mat4.create();
-const modelViewMatrix = mat4.create();
-const normalMatrix = mat3.create();
 const viewMatrix = mat4.create();
+const modelMatrix = mat4.create();     // Local transform of the object
+const modelViewMatrix = mat4.create(); // Combined View * Model
+const normalMatrix = mat3.create();
 
-// Programs
 let gouraudProgram = null;
 let phongProgram = null;
 
 async function main() {
     const canvas = document.querySelector("#glCanvas");
     const gl = canvas.getContext("webgl2");
+    if (!gl) return alert("WebGL2 missing");
 
-    if (!gl) {
-        alert("Unable to initialize WebGL2.");
-        return;
-    }
-
-    // 1. Load Geometry
-    let plyData;
+    // 1. Load Geometry (Single mesh reused for all airplanes)
     let meshBuffers;
     try {
-        plyData = await loadPLY('../assets/beethoven.ply');
+        const plyData = await loadPLY('../assets/airplane.ply');
         meshBuffers = initBuffers(gl, plyData);
     } catch (e) {
-        console.error("Failed to load PLY", e);
+        console.error(e);
         return;
     }
 
-    // 2. Initialize Shaders
+    // 2. Initialize Programs
     gouraudProgram = createProgram(gl, vsGouraud, fsGouraud);
     phongProgram = createProgram(gl, vsPhong, fsPhong);
 
-    // 3. Setup Controls
     setupControls(canvas);
 
-    // 4. Render Loop
     function render(time) {
         resizeCanvasToDisplaySize(gl.canvas);
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
         gl.clearColor(0.1, 0.1, 0.1, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.enable(gl.DEPTH_TEST);
-        gl.enable(gl.CULL_FACE); // Good practice for 3D (Removes faces that are not visible to the viewer)
 
-        // --- Calculate Matrices ---
+        // --- Global Scene Matrices ---
         const fieldOfView = 45 * Math.PI / 180;
         const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
         mat4.perspective(projectionMatrix, fieldOfView, aspect, 0.1, 100.0);
 
-        // View Matrix (Camera)
+        // View Matrix (Camera Zoom + Global Rotation)
         mat4.identity(viewMatrix);
-        mat4.translate(viewMatrix, viewMatrix, [0.0, 0.0, appState.camera.z]); // Used a state variable here
+        mat4.translate(viewMatrix, viewMatrix, [0.0, 0.0, appState.camera.z]);
+        // We treat appState.rotation as "rotating the camera orbit"
+        mat4.rotate(viewMatrix, viewMatrix, appState.rotation.x, [1, 0, 0]);
+        mat4.rotate(viewMatrix, viewMatrix, appState.rotation.y, [0, 1, 0]);
 
-        // ModelView Matrix (Camera + Object Rotation)
-        mat4.copy(modelViewMatrix, viewMatrix);
-        mat4.rotate(modelViewMatrix, modelViewMatrix, appState.rotation.x, [1, 0, 0]);
-        mat4.rotate(modelViewMatrix, modelViewMatrix, appState.rotation.y, [0, 1, 0]);
+        // Pick Program
+        const program = (appState.shadingMode === 'gouraud') ? gouraudProgram : phongProgram;
+        gl.useProgram(program);
 
-        // Normal Matrix (Invert + Transpose of ModelView)
-        mat3.normalFromMat4(normalMatrix, modelViewMatrix);
+        // --- Render Each Object ---
+        appState.objects.forEach(obj => {
 
-        // --- Light Position Handling ---
-        // Transform the light position defined in state.js into View Space
-        // We assume the light in state.js is "World Space"
-        const lightPosWorld = appState.lights[0].position; // Using first light for now
-        const lightPosView = vec3.create();
-        vec3.transformMat4(lightPosView, lightPosWorld, viewMatrix);
+            // 1. Calculate Local Model Matrix
+            mat4.identity(modelMatrix);
+            mat4.translate(modelMatrix, modelMatrix, obj.position);
+            mat4.rotate(modelMatrix, modelMatrix, obj.rotation.x * Math.PI / 180, [1, 0, 0]);
+            mat4.rotate(modelMatrix, modelMatrix, obj.rotation.y * Math.PI / 180, [0, 1, 0]);
+            mat4.scale(modelMatrix, modelMatrix, obj.scale);
 
-        // --- SWITCH LOGIC ---
-        let programToUse;
+            // 2. Combine with View Matrix -> ModelView
+            mat4.multiply(modelViewMatrix, viewMatrix, modelMatrix);
 
-        if (appState.shadingMode === 'gouraud') {
-            programToUse = gouraudProgram;
-        } else {
-            programToUse = phongProgram;
-        }
+            // 3. Normal Matrix
+            mat3.normalFromMat4(normalMatrix, modelViewMatrix);
 
-        gl.useProgram(programToUse);
+            // 4. Set Uniforms
+            gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_modelViewMatrix'), false, modelViewMatrix);
+            gl.uniformMatrix4fv(gl.getUniformLocation(program, 'u_projectionMatrix'), false, projectionMatrix);
+            gl.uniformMatrix3fv(gl.getUniformLocation(program, 'u_normalMatrix'), false, normalMatrix);
 
-        // --- BIND UNIFORMS (Common to both) ---
-        // Since variable names are identical in both shaders, this logic is clean.
+            // Light (Transform to View Space)
+            // We loop through MAX_LIGHTS (2). 
+            // If appState has fewer lights, we send black color for the extras.
+            for (let i = 0; i < 2; i++) {
+                // Get the light from state, or a dummy default if undefined
+                const light = appState.lights[i];
 
-        // Matrices
-        gl.uniformMatrix4fv(gl.getUniformLocation(programToUse, 'u_modelViewMatrix'), false, modelViewMatrix);
-        gl.uniformMatrix4fv(gl.getUniformLocation(programToUse, 'u_projectionMatrix'), false, projectionMatrix);
-        gl.uniformMatrix3fv(gl.getUniformLocation(programToUse, 'u_normalMatrix'), false, normalMatrix);
+                // Determine effective color (handle enabled/disabled)
+                // If global showLights is false, or this specific light is disabled -> Black
+                const effectiveColor = (appState.showLights && light && light.enabled)
+                    ? light.color
+                    : [0.0, 0.0, 0.0];
 
-        // Light & Material
-        gl.uniform3fv(gl.getUniformLocation(programToUse, 'u_lightPosition'), lightPosView);
-        gl.uniform3fv(gl.getUniformLocation(programToUse, 'u_lightColor'), appState.lights[0].color);
+                // Calculate View Space Position
+                const lightPosView = vec3.create();
+                if (light) {
+                    vec3.transformMat4(lightPosView, light.position, viewMatrix);
+                } else {
+                    vec3.set(lightPosView, 0, 0, 0);
+                }
 
-        gl.uniform1f(gl.getUniformLocation(programToUse, 'u_ka'), appState.material.ka);
-        gl.uniform1f(gl.getUniformLocation(programToUse, 'u_kd'), appState.material.kd);
-        gl.uniform1f(gl.getUniformLocation(programToUse, 'u_ks'), appState.material.ks);
-        gl.uniform1f(gl.getUniformLocation(programToUse, 'u_shininess'), appState.material.shininess);
+                // Upload to Shader Array: u_lights[0].position, u_lights[1].position, etc.
+                const posLoc = gl.getUniformLocation(program, `u_lights[${i}].position`);
+                const colLoc = gl.getUniformLocation(program, `u_lights[${i}].color`);
 
-        // Draw
-        gl.bindVertexArray(meshBuffers.vao);
-        gl.drawElements(gl.TRIANGLES, meshBuffers.elementCount, gl.UNSIGNED_SHORT, 0);
+                gl.uniform3fv(posLoc, lightPosView);
+                gl.uniform3fv(colLoc, effectiveColor);
+            }
+
+            // Object Material Uniforms
+            gl.uniform3fv(gl.getUniformLocation(program, 'u_objectColor'), obj.color);
+            gl.uniform1f(gl.getUniformLocation(program, 'u_ka'), obj.material.ka);
+            gl.uniform1f(gl.getUniformLocation(program, 'u_kd'), obj.material.kd);
+            gl.uniform1f(gl.getUniformLocation(program, 'u_ks'), obj.material.ks);
+            gl.uniform1f(gl.getUniformLocation(program, 'u_shininess'), obj.material.shininess);
+
+            // 5. Draw
+            // (If you had different meshes, you would bind the specific buffer here)
+            gl.bindVertexArray(meshBuffers.vao);
+            gl.drawElements(gl.TRIANGLES, meshBuffers.elementCount, gl.UNSIGNED_SHORT, 0);
+        });
 
         requestAnimationFrame(render);
     }
     requestAnimationFrame(render);
 }
 
+// (setupControls remains the same, controlling appState.rotation and appState.camera.z)
 function setupControls(canvas) {
     let isDragging = false;
-    let lastX = 0;
-    let lastY = 0;
+    let lastX = 0, lastY = 0;
 
-    canvas.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
-    });
-
+    canvas.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
     window.addEventListener('mouseup', () => isDragging = false);
 
-    window.addEventListener('mousemove', (e) => {
+    canvas.addEventListener('mousemove', e => {
         if (!isDragging) return;
         const deltaX = e.clientX - lastX;
         const deltaY = e.clientY - lastY;
         appState.rotation.y += deltaX * 0.01;
         appState.rotation.x += deltaY * 0.01;
-        lastX = e.clientX;
-        lastY = e.clientY;
+        lastX = e.clientX; lastY = e.clientY;
     });
 
-    window.addEventListener('keydown', (e) => {
-        // Toggle Shading Model
-        if (e.key === 's' || e.key === 'S') {
-            appState.shadingMode = appState.shadingMode === 'gouraud' ? 'phong' : 'gouraud';
-            console.log("Switched to:", appState.shadingMode);
-        }
-    });
-
-    canvas.addEventListener('wheel', (e) => {
-        e.preventDefault(); // Stop the page from scrolling
-
-        // Adjust zoom speed (0.01 is a good sensitivity)
-        const zoomSpeed = 0.01;
-        appState.camera.z -= e.deltaY * zoomSpeed;
-
-        // Clamp values so you don't go through the object or too far away
-        // Note: Camera is at negative Z, so "max" is actually the smaller negative number logic
+    canvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        appState.camera.z -= e.deltaY * 0.01;
         if (appState.camera.z > appState.camera.min) appState.camera.z = appState.camera.min;
         if (appState.camera.z < appState.camera.max) appState.camera.z = appState.camera.max;
+    }, { passive: false });
 
-        console.log("Zoom Level:", appState.camera.z);
-    }, { passive: false }); // passive: false is required to use preventDefault()
+    window.addEventListener('keydown', e => {
+        if (e.key === 's' || e.key === 'S') {
+            appState.shadingMode = (appState.shadingMode === 'gouraud') ? 'phong' : 'gouraud';
+            console.log("Mode:", appState.shadingMode);
+        }
+    });
 }
 main();
