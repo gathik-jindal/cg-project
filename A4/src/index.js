@@ -5,8 +5,9 @@ import { SGNode } from './SceneGraph.js';
 let scene, camera, renderer;
 let rootSG;           // Root of Scene Graph
 let clock;
-let discNode, poleNode, barNode, swingNode, swingPivot, ballNode, ramp1Node, wallNode;
+let discNode, poleNode, barNode, swingNode, swingPivot, ballNode, ramp1Node, wallNode, groundNode, wall2Node, ball2Node, dominoNode;
 const BALL_START_DELAY = 2.21; // seconds
+let totalSimulatedTime = 0;
 
 init();
 animate();
@@ -23,12 +24,12 @@ function init() {
         1000
     );
     // camera.position.set(-20, -20, -42);
-    camera.position.set(-120, -50, -20);
-    // camera.position.set(0,0,0);
+    // camera.position.set(-120, -82, 25);
+    camera.position.set(-20,-60,150);
+    // camera.position.set(-150, -50, -20);
 
-
-    camera.lookAt(0, -50, -20);
-    // camera.lookAt(-50, -58, -42);
+    // camera.lookAt(0, -50, -20);
+    camera.lookAt(-20, -60, 0);
 
 
     // --- Renderer ---
@@ -43,8 +44,12 @@ function init() {
 
     createRamp1();
     createWall();
+    createWall2();
+    createGround();
     createRollingBall();
+    createRollingBall2();
     createDiscPoleBar();
+    createDomino();
 
     window.addEventListener('resize', onResize);
 }
@@ -108,6 +113,33 @@ function computeBarVelocity(barNode, closestPoint) {
     return totalVelocity;
 }
 
+function handleGroundBallCollision(ballNode) {
+    const ball = ballNode.object3D;
+    const pos  = ball.position;
+    const vel  = ballNode.velocity;
+    const r    = ballNode.data.radius;
+
+    const GROUND_Y = -83;   // <-- your ground height
+    const REST = 0;       // small bounce if you want, or 0 for no bounce
+
+    // Check if ball is below or touching ground
+    if (pos.y - r <= GROUND_Y) {
+
+        // Snap ball onto ground
+        pos.y = GROUND_Y + r;
+
+        vel.y = 0;
+
+        // Mark as on-ground
+        ballNode.state = "ON_GROUND";
+
+        return true;
+    }
+
+    return false;
+}
+
+
 function handleWallBallCollision(ballNode) {
     const ball = ballNode.object3D;
     const pos = ball.position;
@@ -125,6 +157,7 @@ function handleWallBallCollision(ballNode) {
 
         // Bounce (reflect z component)
         vel.z = -vel.z * REST;
+        console.log(vel);
 
         return true;
     }
@@ -132,6 +165,27 @@ function handleWallBallCollision(ballNode) {
     return false;
 }
 
+function handleWall2Collision(ballNode) {
+    const ball = ballNode.object3D;
+    const pos = ball.position;
+    const vel = ballNode.velocity;
+    const r   = ballNode.data.radius;
+
+    if(pos.x - r< -120){
+        pos.x = -120 + r;
+        const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+
+        // Overwrite velocity: Direction (1, 0, 0) * Speed
+        vel.x = speed;
+        vel.y=0;
+        vel.z=0;
+        console.log(pos.z);
+    }
+}
+
+
+
+// Add this in your collision loop
 
 function handleBarBallCollision(ballNode, barNode) {
     const ball = ballNode.object3D;
@@ -204,6 +258,89 @@ function handleBarBallCollision(ballNode, barNode) {
     return false;
 }
 
+function handleBallBallCollison(ballA, ballB) {
+
+    // they collide only if A is catching up to B
+    const posA = ballA.object3D.position;
+    const posB = ballB.object3D.position;
+    const radiusA = ballA.data.radius;
+    const radiusB = ballB.data.radius;
+
+    // Safety check in case radius is not defined
+    if (!radiusA || !radiusB) return false;
+
+    // 2. Calculate distance between centers
+    const distance = posA.distanceTo(posB);
+    const sumOfRadii = radiusA + radiusB;
+    // console.log(distance);
+    // 3. Check for collision
+    if (distance > sumOfRadii) {
+        return false; // No collision
+    }
+
+
+    const uA = ballA.velocity.x;
+    const uB = ballB.velocity.x;
+
+    const mA = 1;   // ball A mass
+    const mB = 2;   // ball B mass
+
+    // 1D elastic collision
+    const vA = ((uA * (mA - mB)) + (2 * mB * uB)) / (mA + mB);
+    const vB = ((uB * (mB - mA)) + (2 * mA * uA)) / (mA + mB);
+
+    ballA.velocity.x = vA;
+    ballB.velocity.x = vB;
+
+    // optional: remove Y & Z components
+    ballA.velocity.y = 0;
+    ballA.velocity.z = 0;
+    ballB.velocity.y = 0;
+    ballB.velocity.z = 0;
+
+    return true;
+}
+
+function sphereAABBCollision(ballPos, radius, box) {
+    const closest = new THREE.Vector3(
+        THREE.MathUtils.clamp(ballPos.x, box.min.x, box.max.x),
+        THREE.MathUtils.clamp(ballPos.y, box.min.y, box.max.y),
+        THREE.MathUtils.clamp(ballPos.z, box.min.z, box.max.z)
+    );
+
+    return closest.distanceTo(ballPos) <= radius;
+}
+
+function handleBallDominoCollision(ballNode, dominoNode) {
+    if(dominoNode.state=="FALLEN"){ballNode.velocity.set(0,0 ,0)}
+    if (dominoNode.state !== "STANDING") return false;
+
+    const ball = ballNode.object3D;
+    const ballPos = ball.position.clone();
+    const r = ballNode.data.radius;
+
+    // compute world bounding box of domino
+    const dominoMesh = dominoNode.children[0].object3D;
+
+    // compute world bounding box of the domino's visible mesh
+    const box = dominoMesh.geometry.boundingBox.clone();
+    box.applyMatrix4(dominoMesh.matrixWorld);
+
+    // check collision
+    if (sphereAABBCollision(ballPos, r, box)) {
+        dominoNode.state = "TOPPLING";
+        dominoNode.data.angularVelocity = 1.0;  // initial push
+        
+        // Stop the ball that hit the domino
+        ballNode.velocity.set(0, 0, 0); 
+
+        return true;
+    }
+
+    // Do nothing if there is no collision
+    return false;
+}
+
 
 // -----------------------
 // Ground
@@ -221,7 +358,7 @@ function createRamp1() {
 
 function createWall() {
     const geom = new THREE.BoxGeometry(50, 50, 1);
-    const mat = new THREE.MeshBasicMaterial({ color: 0x444444 });
+    const mat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
     const mesh = new THREE.Mesh(geom, mat);
 
     mesh.position.set(-50, -58, -40);
@@ -229,7 +366,59 @@ function createWall() {
 
     wallNode = new SGNode(mesh);
     rootSG.add(wallNode);
+    wallNode.data.normal = (0, 0, 1);
 }
+
+function createWall2() {
+    const geom = new THREE.BoxGeometry(50, 50, 1);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    const mesh = new THREE.Mesh(geom, mat);
+
+    mesh.position.set(-120, -58, 25);
+
+    // --- ORIENTATION CALCULATION ---
+    
+    // 1. The Ball's incoming velocity
+    const vIn = new THREE.Vector3(-30.77671738501819, 0, 25.06866101091984);
+    
+    // 2. The desired outgoing velocity (Positive X axis)
+    // We keep the same speed (magnitude), just change direction to (1, 0, 0)
+    const speed = vIn.length();
+    const vOut = new THREE.Vector3(speed, 0, 0); 
+
+    // 3. Calculate the Wall Normal
+    // The normal is the vector difference: vOut - vIn
+    const normal = new THREE.Vector3().subVectors(vOut, vIn).normalize();
+
+    // 4. Rotate the wall to face this normal
+    // Since BoxGeometry faces 'Z' by default, looking at (pos + normal) aligns it correctly.
+    const lookTarget = mesh.position.clone().add(normal);
+    mesh.lookAt(lookTarget);
+
+    wall2Node = new SGNode(mesh);
+    // Add a flag so your collision code knows this is a static wall
+    wall2Node.isWall = true; 
+    wall2Node.data.normal = normal;
+    
+    rootSG.add(wall2Node);
+}
+
+
+function createGround() {
+    const geom = new THREE.BoxGeometry(400, 1, 400);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x444444 });
+    const mesh = new THREE.Mesh(geom, mat);
+
+    mesh.position.set(-20, -84, 0);
+   
+
+    groundNode = new SGNode(mesh);
+    rootSG.add(groundNode);
+}
+
+
+
+
 
 
 // -----------------------
@@ -253,7 +442,7 @@ function createRollingBall() {
     ballNode.setUpdateCallback((node, dt) => {
 
         if (node.state === "WAITING") {
-            if (clock.getElapsedTime() > BALL_START_DELAY) {
+            if (totalSimulatedTime > BALL_START_DELAY) {
                 node.state = "ON_RAMP"; // Time's up, start rolling
             } else {
                 return; // Do nothing until the delay has passed
@@ -264,7 +453,12 @@ function createRollingBall() {
             return; // collision handled
         }
 
+
         handleWallBallCollision(ballNode);
+        handleWall2Collision(ballNode);
+        // checkWallCollision(ballNode, wall2Node);
+        handleGroundBallCollision(ballNode)
+        handleBallBallCollison(ballNode, ball2Node);
 
         const ball = node.object3D;
         const ramp = ramp1Node.object3D;
@@ -302,6 +496,18 @@ function createRollingBall() {
     
             // (Later: Collisions)
     
+        }
+
+        else if (node.state === "ON_GROUND") {
+
+            // No gravity
+            node.velocity.y = 0;
+    
+            // Slide/roll on ground
+            const v = node.velocity.clone();
+            v.y = 0; // force flat motion
+            ball.position.add(v.multiplyScalar(dt));
+            return;
         }
     });
     
@@ -394,14 +600,96 @@ function createDiscPoleBar() {
 
 }
 
+function createRollingBall2() {
+    const geom = new THREE.SphereGeometry(2, 32, 32);
+    const mat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const mesh = new THREE.Mesh(geom, mat);
+
+
+    mesh.position.set(-30, -81, 24.50727456099691);
+
+    ball2Node = new SGNode(mesh);
+    ball2Node.data.radius = 2;
+
+    rootSG.add(ball2Node);
+
+    ball2Node.setUpdateCallback((node, dt) => {
+        handleBallDominoCollision(node, dominoNode);
+        const ball = node.object3D;
+        const v = node.velocity.clone();
+        ball.position.add(v.multiplyScalar(dt));
+        return;
+    });
+}
+
+
+function createDomino() {
+    // --- 1. The Visible Domino Mesh ---
+    const geom = new THREE.BoxGeometry(0.5, 10.0, 5.0); // width(x), height(y), depth(z)
+    geom.computeBoundingBox();
+
+    const mat = new THREE.MeshBasicMaterial({ color: 0x888800 });
+    const mesh = new THREE.Mesh(geom, mat);
+
+    // Translate the mesh UP so its bottom edge is at y=0 in its local space.
+    mesh.position.y = 5.0; // Half of its height
+
+    const dominoMeshNode = new SGNode(mesh);
+
+    // --- 2. The Invisible Pivot Node ---
+    // This node will sit on the ground and be the center of rotation.
+    const pivot = new THREE.Object3D();
+    pivot.position.set(30, -83, 24.50727456099691); // Position the pivot on the ground
+
+    dominoNode = new SGNode(pivot);
+    dominoNode.add(dominoMeshNode); // Add the visible mesh as a child of the pivot
+
+    // --- 3. Physics Data and Update Logic ---
+    dominoNode.state = "STANDING";
+    dominoNode.data = {
+        angle: 0,
+        angularVelocity: 0,
+        // fallAxis is correct, we want to rotate around Z to fall along X.
+        fallAxis: new THREE.Vector3(0, 0, 1),
+        fallen: false
+    };
+
+    // Add the whole pivot assembly to the scene
+    rootSG.add(dominoNode);
+
+    // Install domino physics update logic ON THE PIVOT NODE
+    dominoNode.setUpdateCallback((node, dt) => {
+        if (node.state !== "TOPPLING") return;
+
+        // integrate angle
+        node.data.angle += node.data.angularVelocity * dt;
+        
+        // apply constant acceleration to fall faster
+        node.data.angularVelocity += 3 * dt;
+
+        // clamp, mark fallen
+        if (node.data.angle > Math.PI / 2) { // Fall until it's flat (90 degrees)
+            node.data.angle = Math.PI / 2;
+            node.state = "FALLEN";
+        }
+
+        // update rotation of the PIVOT around the Z-axis
+        node.object3D.rotation.z = -node.data.angle;
+    });
+
+    return dominoNode;
+    }
+
+
 // Animation Loop
 function animate() {
     requestAnimationFrame(animate);
 
     const dt = clock.getDelta();
-
+    const fixed_dt = 1/60;
     // Update entire Scene Graph
-    rootSG.update(dt);
+    rootSG.update(fixed_dt);
+    totalSimulatedTime += fixed_dt;
 
     renderer.render(scene, camera);
 }
