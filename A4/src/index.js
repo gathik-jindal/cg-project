@@ -15,29 +15,36 @@ let isFollowMode = false;
 // --- GLOBAL VARIABLES FOR LIGHTING ---
 // --- LIGHTING STATE ---
 const lightState = {
-    // Light 0: Point Source (Global)
-    // Dimmed slightly so it doesn't wash out the others
+    // Light 0: Point Source (Global) - Fixed location, illuminating entire scene
     light0: {
         position: new THREE.Vector3(0, 50, 50),
         color: new THREE.Color(0xFFFFFF),
-        intensity: 0.6, // <--- ADD THIS
-        enabled: true
+        intensity: 0.6,
+        enabled: true,
+        isSpot: 0.0,        // 0 = Point Light
+        direction: new THREE.Vector3(0, 0, 0), // Ignored for point lights
+        cutoff: 0.0         // Ignored
     },
-    // Light 1: Directional Spotlight (Side)
-    // Red is naturally dark, so we boost the intensity significantly
+    // Light 1: Directional Spotlight (Fixed) - Fixed height/side, lighting middle
     light1: {
-        position: new THREE.Vector3(-80, 20, 0),
-        color: new THREE.Color(0xFF0000),
-        intensity: 2.0, // <--- ADD THIS
-        enabled: true
+        position: new THREE.Vector3(-80, 40, 0), // Side location
+        color: new THREE.Color(0xFF0000),        // Red
+        intensity: 2.0,
+        enabled: true,
+        isSpot: 1.0,        // 1 = Spotlight
+        // Pointing roughly at the center (0, -50, 0) from (-80, 40, 0)
+        direction: new THREE.Vector3(1, -1, 0).normalize(),
+        cutoff: Math.cos(Math.PI / 6) // ~30 degree cone
     },
-    // Light 2: Moving Spotlight (Tracking)
-    // Cyan is naturally bright, so we cut the intensity in half
+    // Light 2: Moving Spotlight (Tracking) - Fixed location, points to moving object
     light2: {
-        position: new THREE.Vector3(0, 50, 0),
-        color: new THREE.Color(0x00FFFF),
-        intensity: 0.5, // <--- ADD THIS
-        enabled: true
+        position: new THREE.Vector3(0, 80, 80), // FIXED location high up
+        color: new THREE.Color(0x00FFFF),       // Cyan
+        intensity: 0.8,
+        enabled: true,
+        isSpot: 1.0,        // 1 = Spotlight
+        direction: new THREE.Vector3(0, -1, 0), // Will be updated in animate()
+        cutoff: Math.cos(Math.PI / 15) // Narrower beam (~12 degrees)
     }
 };
 
@@ -212,14 +219,37 @@ function createPhongMaterial(colorHex) {
             u_shininess: { value: 64.0 },
             u_lights: {
                 value: [
-                    { position: new THREE.Vector3(), color: new THREE.Color(0x000000), enabled: 0.0 },
-                    { position: new THREE.Vector3(), color: new THREE.Color(0x000000), enabled: 0.0 },
-                    { position: new THREE.Vector3(), color: new THREE.Color(0x000000), enabled: 0.0 }
+                    // Initialize with placeholders; updateMaterials will fill these
+                    {
+                        position: new THREE.Vector3(),
+                        direction: new THREE.Vector3(),
+                        color: new THREE.Color(0x000000),
+                        enabled: 0.0,
+                        isSpot: 0.0,
+                        cutoff: 0.0
+                    },
+                    {
+                        position: new THREE.Vector3(),
+                        direction: new THREE.Vector3(),
+                        color: new THREE.Color(0x000000),
+                        enabled: 0.0,
+                        isSpot: 0.0,
+                        cutoff: 0.0
+                    },
+                    {
+                        position: new THREE.Vector3(),
+                        direction: new THREE.Vector3(),
+                        color: new THREE.Color(0x000000),
+                        enabled: 0.0,
+                        isSpot: 0.0,
+                        cutoff: 0.0
+                    }
                 ]
             }
         }
     });
 }
+
 function onResize() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
@@ -862,34 +892,33 @@ function createDomino() {
 }
 
 function updateMaterials(node) {
-    // 1. Check if this node has a mesh with our custom shader
     if (node.object3D && node.object3D.material && node.object3D.material.uniforms) {
         const uniforms = node.object3D.material.uniforms;
-
-        // --- TRANSFORM LIGHTS TO VIEW SPACE ---
-        // Shaders calculate lighting relative to the camera (View Space).
-        // We must transform our World coordinates into View coordinates.
         const viewMatrix = camera.matrixWorldInverse;
 
-        // Helper to update a single light struct in the array
         const updateLightUniform = (index, state) => {
-            // Copy color and enabled status
             uniforms.u_lights.value[index].color.copy(state.color);
             uniforms.u_lights.value[index].enabled = state.enabled ? 1.0 : 0.0;
+            uniforms.u_lights.value[index].isSpot = state.isSpot;
+            uniforms.u_lights.value[index].cutoff = state.cutoff;
 
-            // Transform Position: World -> View
+            // 1. Transform Position (Point) -> View Space
             const worldPos = state.position.clone();
             const viewPos = worldPos.applyMatrix4(viewMatrix);
             uniforms.u_lights.value[index].position.copy(viewPos);
+
+            // 2. Transform Direction (Vector) -> View Space
+            // "transformDirection" applies the rotation of the matrix but ignores translation
+            const worldDir = state.direction.clone();
+            const viewDir = worldDir.transformDirection(viewMatrix).normalize();
+            uniforms.u_lights.value[index].direction.copy(viewDir);
         };
 
-        // Update all 3 lights
         updateLightUniform(0, lightState.light0);
         updateLightUniform(1, lightState.light1);
         updateLightUniform(2, lightState.light2);
     }
 
-    // 2. Recursively update children
     for (const child of node.children) {
         updateMaterials(child);
     }
