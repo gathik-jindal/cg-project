@@ -1,4 +1,5 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+// CHANGE THE TOP LINE TO THIS:
+import * as THREE from 'three';
 
 // SceneGraph.js
 export class SGNode {
@@ -8,7 +9,7 @@ export class SGNode {
         this.parent = null;
         this.state = null;
         this.velocity = new THREE.Vector3(0, 0, 0);
-        this.data = {}; 
+        this.data = {};
         this.updateFunc = null;     // Animation callback
     }
 
