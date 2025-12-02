@@ -6,128 +6,127 @@ import { vsPhong, fsPhong } from './shaders.js';
 // --- CONFIGURATION ---
 // Define your hardcoded objects here.
 // You can add as many as you want.
-const decorationConfig = [];
-// const decorationConfig = [
-//     {
-//         id: 'airplane_1',
-//         url: '../assets/airplane.ply',
-//         // Lowered Y to -83.5 (Floor). Increased scale to 10.
-//         position: [20, -43.5, 20],
-//         rotation: [-Math.PI / 2, 0, 0],
-//         scale: 40.0,
-//         color: 0x888888
-//     },
-//     {
-//         id: 'airplane_1',
-//         url: '../assets/airplane.ply',
-//         // Lowered Y to -83.5 (Floor). Increased scale to 10.
-//         position: [-30, -43.5, 60],
-//         rotation: [-Math.PI / 4, -Math.PI, 0],
-//         scale: 40.0,
-//         color: 0x888008
-//     },
-//     {
-//         id: 'airplane_1',
-//         url: '../assets/airplane.ply',
-//         // Lowered Y to -83.5 (Floor). Increased scale to 10.
-//         position: [-70, -43.5, 30],
-//         rotation: [Math.PI / 4, Math.PI / 2, Math.PI / 4],
-//         scale: 40.0,
-//         color: 0x800088
-//     },
-//     {
-//         id: 'ant_1',
-//         url: '../assets/ant.ply',
-//         // Lowered Y to -83.5. Increased scale to 5.
-//         position: [-40, -83.5, -10],
-//         rotation: [0, 0, 0],
-//         scale: 50.0,
-//         color: 0x228b22
-//     },
-//     {
-//         id: 'apple_1',
-//         url: '../assets/apple.ply',
-//         // Lowered Y to -83.5. Kept scale (or increased slightly).
-//         position: [-10, -83.5, 50],
-//         rotation: [0, -Math.PI / 2, 0],
-//         scale: 5.0,
-//         color: 0xffd700
-//     },
-//     {
-//         id: 'apple_2',
-//         url: '../assets/apple.ply',
-//         // Lowered Y to -83.5. Kept scale (or increased slightly).
-//         position: [-20, -83.5, 50],
-//         rotation: [0, -Math.PI / 2, 0],
-//         scale: 5.0,
-//         color: 0xffd700
-//     },
-//     {
-//         id: 'apple_3',
-//         url: '../assets/apple.ply',
-//         // Lowered Y to -83.5. Kept scale (or increased slightly).
-//         position: [-20, -83.5, 40],
-//         rotation: [0, -Math.PI / 2, 0],
-//         scale: 5.0,
-//         color: 0xffd700
-//     },
-//     {
-//         id: 'apple_4',
-//         url: '../assets/apple.ply',
-//         // Lowered Y to -83.5. Kept scale (or increased slightly).
-//         position: [-15, -83.5, 45],
-//         rotation: [0, -Math.PI / 2, 0],
-//         scale: 5.0,
-//         color: 0xffd700
-//     },
-//     {
-//         id: 'apple_5',
-//         url: '../assets/apple.ply',
-//         // Lowered Y to -83.5. Kept scale (or increased slightly).
-//         position: [-10, -83.5, 45],
-//         rotation: [0, -Math.PI / 2, 0],
-//         scale: 5.0,
-//         color: 0xffd700
-//     },
-//     {
-//         id: 'trash_1',
-//         url: '../assets/trashcan.ply',
-//         // Lowered Y to -83.5. Kept scale (or increased slightly).
-//         position: [10, -78.5, 40],
-//         rotation: [-Math.PI / 2, 0, 0],
-//         scale: 5.0,
-//         color: 0xfff7ff
-//     },
-//     {
-//         id: 'beethoven_1',
-//         url: '../assets/beethoven.ply',
-//         // Lowered Y to -83.5. Kept scale (or increased slightly).
-//         position: [100, -78.5, 40],
-//         rotation: [0, -Math.PI / 2, 0],
-//         scale: 50.0,
-//         color: 0x1ff7ff
-//     },
-//     {
-//         id: 'beethoven_2',
-//         url: '../assets/beethoven.ply',
-//         // Lowered Y to -83.5. Kept scale (or increased slightly).
-//         position: [10, -78.5, -40],
-//         rotation: [0, 0, 0],
-//         scale: 50.0,
-//         color: 0x4f00ff
-//     },
-//     {
-//         id: 'hind_1',
-//         url: '../assets/hind.ply',
-//         // Lowered Y to -83.5. Kept scale (or increased slightly).
-//         position: [10, -43.5, 40],
-//         rotation: [-Math.PI / 4, 0, Math.PI],
-//         scale: 50.0,
-//         color: 0x0ff00f
-//     },
 
-// ];
+const decorationConfig = [
+    {
+        id: 'airplane_1',
+        url: '../assets/airplane.ply',
+        // Lowered Y to -83.5 (Floor). Increased scale to 10.
+        position: [20, -43.5, 20],
+        rotation: [-Math.PI / 2, 0, 0],
+        scale: 40.0,
+        color: 0x888888
+    },
+    {
+        id: 'airplane_1',
+        url: '../assets/airplane.ply',
+        // Lowered Y to -83.5 (Floor). Increased scale to 10.
+        position: [-30, -43.5, 60],
+        rotation: [-Math.PI / 4, -Math.PI, 0],
+        scale: 40.0,
+        color: 0x888008
+    },
+    {
+        id: 'airplane_1',
+        url: '../assets/airplane.ply',
+        // Lowered Y to -83.5 (Floor). Increased scale to 10.
+        position: [-70, -43.5, 30],
+        rotation: [Math.PI / 4, Math.PI / 2, Math.PI / 4],
+        scale: 40.0,
+        color: 0x800088
+    },
+    {
+        id: 'ant_1',
+        url: '../assets/ant.ply',
+        // Lowered Y to -83.5. Increased scale to 5.
+        position: [-40, -83.5, -10],
+        rotation: [0, 0, 0],
+        scale: 50.0,
+        color: 0x228b22
+    },
+    {
+        id: 'apple_1',
+        url: '../assets/apple.ply',
+        // Lowered Y to -83.5. Kept scale (or increased slightly).
+        position: [-10, -83.5, 50],
+        rotation: [0, -Math.PI / 2, 0],
+        scale: 5.0,
+        color: 0xffd700
+    },
+    {
+        id: 'apple_2',
+        url: '../assets/apple.ply',
+        // Lowered Y to -83.5. Kept scale (or increased slightly).
+        position: [-20, -83.5, 50],
+        rotation: [0, -Math.PI / 2, 0],
+        scale: 5.0,
+        color: 0xffd700
+    },
+    {
+        id: 'apple_3',
+        url: '../assets/apple.ply',
+        // Lowered Y to -83.5. Kept scale (or increased slightly).
+        position: [-20, -83.5, 40],
+        rotation: [0, -Math.PI / 2, 0],
+        scale: 5.0,
+        color: 0xffd700
+    },
+    {
+        id: 'apple_4',
+        url: '../assets/apple.ply',
+        // Lowered Y to -83.5. Kept scale (or increased slightly).
+        position: [-15, -83.5, 45],
+        rotation: [0, -Math.PI / 2, 0],
+        scale: 5.0,
+        color: 0xffd700
+    },
+    {
+        id: 'apple_5',
+        url: '../assets/apple.ply',
+        // Lowered Y to -83.5. Kept scale (or increased slightly).
+        position: [-10, -83.5, 45],
+        rotation: [0, -Math.PI / 2, 0],
+        scale: 5.0,
+        color: 0xffd700
+    },
+    {
+        id: 'trash_1',
+        url: '../assets/trashcan.ply',
+        // Lowered Y to -83.5. Kept scale (or increased slightly).
+        position: [10, -78.5, 40],
+        rotation: [-Math.PI / 2, 0, 0],
+        scale: 5.0,
+        color: 0xfff7ff
+    },
+    {
+        id: 'beethoven_1',
+        url: '../assets/beethoven.ply',
+        // Lowered Y to -83.5. Kept scale (or increased slightly).
+        position: [100, -78.5, 40],
+        rotation: [0, -Math.PI / 2, 0],
+        scale: 50.0,
+        color: 0x1ff7ff
+    },
+    {
+        id: 'beethoven_2',
+        url: '../assets/beethoven.ply',
+        // Lowered Y to -83.5. Kept scale (or increased slightly).
+        position: [10, -78.5, -40],
+        rotation: [0, 0, 0],
+        scale: 50.0,
+        color: 0x4f00ff
+    },
+    {
+        id: 'hind_1',
+        url: '../assets/hind.ply',
+        // Lowered Y to -83.5. Kept scale (or increased slightly).
+        position: [10, -43.5, 40],
+        rotation: [-Math.PI / 4, 0, Math.PI],
+        scale: 50.0,
+        color: 0x0ff00f
+    },
 
+];
 
 /**
  * Helper to create the same Phong material used in index.js
