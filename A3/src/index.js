@@ -1,8 +1,8 @@
 import { loadPLY } from './PLYLoader.js';
-import { createProgram, resizeCanvasToDisplaySize } from './webgl-utils.js';
+import { loadTexture, createProgram, resizeCanvasToDisplaySize } from './webgl-utils.js';
 import { appState } from './state.js';
-import { initBuffers, initCubeBuffers } from './buffers.js'; // <--- Import Cube Init
-import { vsGouraud, fsGouraud, vsPhong, fsPhong, vsSimple, fsSimple } from './shaders.js'; // <--- Import Simple Shader
+import { initBuffers, initCubeBuffers } from './buffers.js';
+import { vsGouraud, fsGouraud, vsPhong, fsPhong, vsSimple, fsSimple } from './shaders.js';
 
 const { mat4, mat3, vec3 } = window.glMatrix;
 
@@ -15,7 +15,7 @@ const normalMatrix = mat3.create();
 
 let gouraudProgram = null;
 let phongProgram = null;
-let simpleProgram = null; // Shader for Light Cubes
+let simpleProgram = null;
 
 function updateUI() {
     const statusDiv = document.getElementById('status-content');
@@ -29,11 +29,17 @@ function updateUI() {
         <b>Light 1 (White):</b> ${appState.lights[0].enabled ? "ON" : "OFF"}<br>
         <b>Light 2 (Blue):</b> ${appState.lights[1].enabled ? "ON" : "OFF"}<br>
         <br>
+        <b>Texture:</b> ${appState.texture.toUpperCase()}<br>
+        <b>Mapping:</b> ${appState.texMapping.toUpperCase()}<br>
+        <br>
         <b>Material (Global):</b><br>
         Diffuse (Kd): ${fmt(appState.material.kd)}<br>
         Specular (Ks): ${fmt(appState.material.ks)}
     `;
 }
+
+let woodTexture = null;
+let checkerTexture = null;
 
 async function main() {
     const canvas = document.querySelector("#glCanvas");
@@ -42,11 +48,11 @@ async function main() {
 
     // 1. Load Geometry
     let meshBuffers;
-    let lightCubeBuffers; // <--- Buffers for the light cube
+    let lightCubeBuffers;
     try {
         const plyData = await loadPLY('../assets/beethoven.ply');
         meshBuffers = initBuffers(gl, plyData);
-        lightCubeBuffers = initCubeBuffers(gl); // Initialize cube
+        lightCubeBuffers = initCubeBuffers(gl);
     } catch (e) {
         console.error(e);
         return;
@@ -55,7 +61,11 @@ async function main() {
     // 2. Initialize Programs
     gouraudProgram = createProgram(gl, vsGouraud, fsGouraud);
     phongProgram = createProgram(gl, vsPhong, fsPhong);
-    simpleProgram = createProgram(gl, vsSimple, fsSimple); // Initialize simple shader
+    simpleProgram = createProgram(gl, vsSimple, fsSimple);
+
+    // 3. Load textures
+    woodTexture = loadTexture(gl, '../assets/textures/wood-grain_texture.jpg');
+    checkerTexture = loadTexture(gl, '../assets/textures/checkerboard_texture.jpg');
 
     setupControls(canvas);
     updateUI();
@@ -77,13 +87,37 @@ async function main() {
         mat4.rotate(viewMatrix, viewMatrix, appState.rotation.x, [1, 0, 0]);
         mat4.rotate(viewMatrix, viewMatrix, appState.rotation.y, [0, 1, 0]);
 
-
-        // --- PART A: Draw Objects (Airplanes) ---
+        // --- PART A: Draw Objects ---
         const program = (appState.shadingMode === 'gouraud') ? gouraudProgram : phongProgram;
         gl.useProgram(program);
 
-        // Set Shader specific toggle
-        // (Gouraud shader doesn't have this toggle in our implementation, only Phong does)
+        // --- TEXTURE SETUP (FIXED) ---
+        const useTexture = (appState.texture !== 'none');
+        
+        if (useTexture) {
+            // Determine which texture to use
+            const tex = (appState.texture === 'wood') ? woodTexture : checkerTexture;
+            
+            // Determine mapping type: 1=spherical, 2=cylindrical
+            const texMappingVal = (appState.texMapping === 'spherical') ? 1 : 2;
+            
+            // Bind texture to texture unit 0
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, tex);
+            
+            // Set uniforms for VERTEX shader (generates tex coords)
+            gl.uniform1i(gl.getUniformLocation(program, 'u_texture'), 0);
+            gl.uniform1i(gl.getUniformLocation(program, 'u_texMapping'), texMappingVal);
+            
+            // Set uniform for FRAGMENT shader (uses texture)
+            gl.uniform1i(gl.getUniformLocation(program, 'u_useTexture'), 1);
+        } else {
+            // No texture
+            gl.uniform1i(gl.getUniformLocation(program, 'u_texMapping'), 0);
+            gl.uniform1i(gl.getUniformLocation(program, 'u_useTexture'), 0);
+        }
+
+        // Set Blinn-Phong toggle (only for Phong shader)
         if (appState.shadingMode === 'phong') {
             gl.uniform1i(gl.getUniformLocation(program, 'u_useBlinn'), appState.useBlinn ? 1 : 0);
         }
@@ -116,9 +150,6 @@ async function main() {
 
             // Material
             gl.uniform3fv(gl.getUniformLocation(program, 'u_objectColor'), obj.color);
-            // Dynamic Material Properties (controlled by keys now)
-            // We use the object's base prop multiplied by a global modifier if we want global control,
-            // or just update the object props directly. Let's use global modifiers for simplicity as requested.
             gl.uniform1f(gl.getUniformLocation(program, 'u_ka'), appState.material.ka);
             gl.uniform1f(gl.getUniformLocation(program, 'u_kd'), appState.material.kd);
             gl.uniform1f(gl.getUniformLocation(program, 'u_ks'), appState.material.ks);
@@ -128,9 +159,7 @@ async function main() {
             gl.drawElements(gl.TRIANGLES, meshBuffers.elementCount, gl.UNSIGNED_SHORT, 0);
         });
 
-
         // --- PART B: Draw Lights (Cubes) ---
-        // Only draw if enabled
         if (appState.showLights) {
             gl.useProgram(simpleProgram);
 
@@ -139,7 +168,7 @@ async function main() {
 
                 mat4.identity(modelMatrix);
                 mat4.translate(modelMatrix, modelMatrix, light.position);
-                mat4.scale(modelMatrix, modelMatrix, [0.2, 0.2, 0.2]); // Make them small
+                mat4.scale(modelMatrix, modelMatrix, [0.2, 0.2, 0.2]);
 
                 mat4.multiply(modelViewMatrix, viewMatrix, modelMatrix);
 
@@ -162,9 +191,17 @@ function setupControls(canvas) {
     let lastX = 0, lastY = 0;
     canvas.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
     window.addEventListener('mouseup', () => isDragging = false);
-    canvas.addEventListener('mousemove', e => { if (!isDragging) return; appState.rotation.y += (e.clientX - lastX) * 0.01; appState.rotation.x += (e.clientY - lastY) * 0.01; lastX = e.clientX; lastY = e.clientY; });
-    canvas.addEventListener('wheel', e => { e.preventDefault(); appState.camera.z -= e.deltaY * 0.01; }, { passive: false });
-
+    canvas.addEventListener('mousemove', e => { 
+        if (!isDragging) return; 
+        appState.rotation.y += (e.clientX - lastX) * 0.01; 
+        appState.rotation.x += (e.clientY - lastY) * 0.01; 
+        lastX = e.clientX; 
+        lastY = e.clientY; 
+    });
+    canvas.addEventListener('wheel', e => { 
+        e.preventDefault(); 
+        appState.camera.z -= e.deltaY * 0.01; 
+    }, { passive: false });
 
     // --- KEYBOARD CONTROLS ---
     window.addEventListener('keydown', (e) => {
@@ -188,13 +225,38 @@ function setupControls(canvas) {
                 console.log("Light 2:", appState.lights[1].enabled);
                 break;
             // Material Strength Controls
-            case 'z': appState.material.kd = Math.min(1.0, appState.material.kd + 0.1); break;
-            case 'x': appState.material.kd = Math.max(0.0, appState.material.kd - 0.1); break;
-            case 'c': appState.material.ks = Math.min(1.0, appState.material.ks + 0.1); break;
-            case 'v': appState.material.ks = Math.max(0.0, appState.material.ks - 0.1); break;
+            case 'z': 
+                appState.material.kd = Math.min(1.0, appState.material.kd + 0.1); 
+                console.log("Kd:", appState.material.kd.toFixed(2));
+                break;
+            case 'x': 
+                appState.material.kd = Math.max(0.0, appState.material.kd - 0.1); 
+                console.log("Kd:", appState.material.kd.toFixed(2));
+                break;
+            case 'c': 
+                appState.material.ks = Math.min(1.0, appState.material.ks + 0.1); 
+                console.log("Ks:", appState.material.ks.toFixed(2));
+                break;
+            case 'v': 
+                appState.material.ks = Math.max(0.0, appState.material.ks - 0.1); 
+                console.log("Ks:", appState.material.ks.toFixed(2));
+                break;
+            case 't': 
+                // Toggle texture
+                if (appState.texture === 'none') appState.texture = 'wood';
+                else if (appState.texture === 'wood') appState.texture = 'checker';
+                else appState.texture = 'none';
+                console.log("Texture:", appState.texture);
+                break;
+            case 'm': 
+                // Toggle mapping mode
+                appState.texMapping = (appState.texMapping === 'spherical') ? 'cylindrical' : 'spherical';
+                console.log("Mapping:", appState.texMapping);
+                break;
         }
 
         updateUI();
     });
 }
+
 main();

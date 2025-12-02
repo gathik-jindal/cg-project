@@ -2,6 +2,8 @@ export const appState = {
     shadingMode: 'phong', // 'gouraud' or 'phong'
     useBlinn: true,       // true = Blinn-Phong, false = Standard Phong
     camera: { z: -5.0, min: -2.0, max: -20.0 },
+    texture: 'none', // Add: 'none', 'wood', 'checker'
+    texMapping: 'spherical', 
 
     // Lighting Toggle
     showLights: true,
