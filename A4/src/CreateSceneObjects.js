@@ -479,7 +479,6 @@ export function createDomino(rootSG) {
     // Add the whole pivot assembly to the scene
     rootSG.add(dominoNode);
 
-    // Install domino physics update logic ON THE PIVOT NODE
     dominoNode.setUpdateCallback((node, dt) => {
         if (node.state !== "TOPPLING") return;
 
@@ -490,9 +489,22 @@ export function createDomino(rootSG) {
         node.data.angularVelocity += 3 * dt;
 
         // clamp, mark fallen
-        if (node.data.angle > Math.PI / 2) { // Fall until it's flat (90 degrees)
+        if (node.data.angle > Math.PI / 2) {
             node.data.angle = Math.PI / 2;
-            node.state = "FALLEN";
+
+            // --- NEW: Change Color ONCE when it finishes falling ---
+            if (node.state !== "FALLEN") {
+                node.state = "FALLEN";
+
+                // 1. Get the child node that holds the mesh
+                const meshNode = node.children[0];
+
+                // 2. Access the material uniforms
+                if (meshNode && meshNode.object3D.material.uniforms) {
+                    // Change to GREEN (0x00FF00) to indicate success
+                    meshNode.object3D.material.uniforms.u_objectColor.value.setHex(0x00FF00);
+                }
+            }
         }
 
         // update rotation of the PIVOT around the Z-axis

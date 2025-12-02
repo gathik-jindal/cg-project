@@ -55,6 +55,8 @@ let discNode, poleNode, barNode, swingNode, swingPivot, ballNode, ramp1Node, wal
 let light0Node, light1Node, light2Node;
 let totalSimulatedTime = 0;
 let spotLightBallFocus; // which ball the spotlight is following
+let physicsAccumulator = 0;
+const FIXED_STEP = 1 / 60; // 60 Hz
 
 (async () => {
     await init();
@@ -188,14 +190,27 @@ async function init() {
 function animate() {
     requestAnimationFrame(animate);
 
-    const dt = clock.getDelta();
-    const fixed_dt = 1 / 60;
+    // 1. Get exact time passed since last frame (Real time)
+    let dt = clock.getDelta();
 
-    // 1. Update Physics
-    rootSG.update(fixed_dt);
-    totalSimulatedTime += fixed_dt;
+    // SAFETY: Cap dt to prevent "Spiral of Death" if tab is hidden/laggy
+    // If the computer freezes for 5 seconds, we don't want to run 300 physics steps at once.
+    if (dt > 0.1) dt = 0.1;
 
-    // 2. Camera Follow Logic
+    // 2. Add real time to the physics bank
+    physicsAccumulator += dt * 2;
+
+    // 3. Consume the banked time in fixed chunks
+    // This loop ensures physics always runs at exactly the equivalent of 60 steps/sec
+    while (physicsAccumulator >= FIXED_STEP) {
+        totalSimulatedTime += FIXED_STEP;
+        rootSG.update(FIXED_STEP);
+
+        // Subtract the time chunk we just simulated
+        physicsAccumulator -= FIXED_STEP;
+    }
+
+    // 4. Camera Follow Logic
     if (isFollowMode && spotLightBallFocus) {
         const ballPos = spotLightBallFocus.object3D.position;
         const offset = camera.position.clone().sub(controls.target);
@@ -203,47 +218,36 @@ function animate() {
         camera.position.copy(ballPos).add(offset);
     }
 
-    // 3. Update Controls
+    // 5. Update Controls
     controls.update();
 
-    // --- LIGHTING LOGIC ---
-
-    // 1. Update Tracking Light Position (Light 2)
+    // 6. Lighting Logic
     if (spotLightBallFocus) {
         const targetPos = spotLightBallFocus.object3D.position;
 
-        // A. Update Position (Hover above the ball)
+        // Update Position
         lightState.light2.position.set(targetPos.x, targetPos.y + 20, targetPos.z);
 
-        // B. Update Direction (Point AT the ball) [ADD THIS BLOCK]
-        // Calculate vector from Light -> Ball
+        // Update Direction
         const newDir = new THREE.Vector3()
             .subVectors(targetPos, lightState.light2.position)
             .normalize();
-
         lightState.light2.direction.copy(newDir);
 
-        // Update the VISUAL mesh position
         if (light2Node) {
             light2Node.object3D.position.copy(lightState.light2.position);
         }
     }
 
-    // 2. Visual Feedback: Dim the spheres if the light is OFF
-    // We check the 'enabled' flag and set the mesh color accordingly
+    // Visual Feedback
     if (light0Node) light0Node.object3D.material.color.setHex(lightState.light0.enabled ? 0xFFFFFF : 0x111111);
     if (light1Node) light1Node.object3D.material.color.setHex(lightState.light1.enabled ? 0xFF0000 : 0x111111);
     if (light2Node) light2Node.object3D.material.color.setHex(lightState.light2.enabled ? 0x00FFFF : 0x111111);
 
-    // 3. Push data to Shaders
+    // 7. Update Shaders
     camera.updateMatrixWorld();
-
-    // Manually update the inverse matrix so 'updateMaterials' uses the current camera position
     camera.matrixWorldInverse.copy(camera.matrixWorld).invert();
-    // ---------------------
-
     updateMaterials(rootSG);
-    // ---------------------------
 
     renderer.render(scene, camera);
 }
@@ -323,6 +327,12 @@ function resetSimulation() {
         dominoNode.data.angularVelocity = 0;
         dominoNode.data.fallen = false;
         dominoNode.object3D.rotation.z = 0;
+
+        const meshNode = dominoNode.children[0];
+        if (meshNode && meshNode.object3D.material.uniforms) {
+            // Original color was 0x888800
+            meshNode.object3D.material.uniforms.u_objectColor.value.setHex(0x888800);
+        }
     }
 
     // --- NEW: Reset Disc and Swing ---
