@@ -44,7 +44,7 @@ async function main() {
     let meshBuffers;
     let lightCubeBuffers; // <--- Buffers for the light cube
     try {
-        const plyData = await loadPLY('../assets/beethoven.ply');
+        const plyData = await loadPLY('../assets/stratocaster.ply');
         meshBuffers = initBuffers(gl, plyData);
         lightCubeBuffers = initCubeBuffers(gl); // Initialize cube
     } catch (e) {
