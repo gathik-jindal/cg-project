@@ -14,7 +14,8 @@ const decorationConfig = [
         position: [20, -43.5, 20],
         rotation: [-Math.PI / 2, 0, 0],
         scale: 40.0,
-        color: 0x888888
+        color: 0x888888,
+        textureId: 'metal'
     },
     {
         id: 'airplane_1',
@@ -23,7 +24,8 @@ const decorationConfig = [
         position: [-30, -43.5, 60],
         rotation: [-Math.PI / 4, -Math.PI, 0],
         scale: 40.0,
-        color: 0x888008
+        color: 0x888008,
+        textureId: 'grunge'
     },
     {
         id: 'airplane_1',
@@ -32,7 +34,8 @@ const decorationConfig = [
         position: [-70, -43.5, 30],
         rotation: [Math.PI / 4, Math.PI / 2, Math.PI / 4],
         scale: 40.0,
-        color: 0x800088
+        color: 0x800088,
+        textureId: 'wood1'
     },
     {
         id: 'ant_1',
@@ -41,7 +44,8 @@ const decorationConfig = [
         position: [-40, -83.5, -10],
         rotation: [0, 0, 0],
         scale: 50.0,
-        color: 0x228b22
+        color: 0x228b22,
+        textureId: 'redpaint'
     },
     {
         id: 'apple_1',
@@ -50,7 +54,8 @@ const decorationConfig = [
         position: [-10, -83.5, 50],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
-        color: 0xffd700
+        color: 0xffd700,
+        textureId: 'redpaint'
     },
     {
         id: 'apple_2',
@@ -59,7 +64,8 @@ const decorationConfig = [
         position: [-20, -83.5, 50],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
-        color: 0xffd700
+        color: 0xffd700,
+        textureId: 'redpaint'
     },
     {
         id: 'apple_3',
@@ -68,7 +74,8 @@ const decorationConfig = [
         position: [-20, -83.5, 40],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
-        color: 0xffd700
+        color: 0xffd700,
+        textureId: 'redpaint'
     },
     {
         id: 'apple_4',
@@ -77,7 +84,8 @@ const decorationConfig = [
         position: [-15, -83.5, 45],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
-        color: 0xffd700
+        color: 0xffd700,
+        textureId: 'redpaint'
     },
     {
         id: 'apple_5',
@@ -86,7 +94,8 @@ const decorationConfig = [
         position: [-10, -83.5, 45],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
-        color: 0xffd700
+        color: 0xffd700,
+        textureId: 'redpaint'
     },
     {
         id: 'trash_1',
@@ -95,7 +104,8 @@ const decorationConfig = [
         position: [10, -78.5, 40],
         rotation: [-Math.PI / 2, 0, 0],
         scale: 5.0,
-        color: 0xfff7ff
+        color: 0xfff7ff,
+        textureId: 'metal'
     },
     {
         id: 'beethoven_1',
@@ -104,7 +114,8 @@ const decorationConfig = [
         position: [100, -78.5, 40],
         rotation: [0, -Math.PI / 2, 0],
         scale: 50.0,
-        color: 0x1ff7ff
+        color: 0x1ff7ff,
+        textureId: 'stone'
     },
     {
         id: 'beethoven_2',
@@ -113,7 +124,8 @@ const decorationConfig = [
         position: [10, -78.5, -40],
         rotation: [0, 0, 0],
         scale: 50.0,
-        color: 0x4f00ff
+        color: 0x4f00ff,
+        textureId: 'grunge'
     },
     {
         id: 'hind_1',
@@ -122,7 +134,8 @@ const decorationConfig = [
         position: [10, -43.5, 40],
         rotation: [-Math.PI / 4, 0, Math.PI],
         scale: 50.0,
-        color: 0x0ff00f
+        color: 0x0ff00f,
+        textureId: 'rust'
     },
 
 ];
@@ -131,23 +144,46 @@ const decorationConfig = [
 /**
  * Helper to create the same Phong material used in index.js
  */
-function createPhongMaterial(colorHex) {
+function createPhongMaterial(colorHex, texture = null) {
     return new THREE.ShaderMaterial({
         glslVersion: THREE.GLSL3,
         vertexShader: vsPhong,
         fragmentShader: fsPhong,
-        side: THREE.DoubleSide, // Render both sides in case normals are flipped
         uniforms: {
             u_objectColor: { value: new THREE.Color(colorHex) },
             u_ka: { value: 0.2 },
             u_kd: { value: 0.6 },
             u_ks: { value: 0.8 },
             u_shininess: { value: 64.0 },
+            u_useTexture: { value: texture !== null },
+            u_texture: { value: texture },
             u_lights: {
                 value: [
-                    { position: new THREE.Vector3(), direction: new THREE.Vector3(), color: new THREE.Color(0x000000), enabled: 0.0, isSpot: 0.0, cutoff: 0.0 },
-                    { position: new THREE.Vector3(), direction: new THREE.Vector3(), color: new THREE.Color(0x000000), enabled: 0.0, isSpot: 0.0, cutoff: 0.0 },
-                    { position: new THREE.Vector3(), direction: new THREE.Vector3(), color: new THREE.Color(0x000000), enabled: 0.0, isSpot: 0.0, cutoff: 0.0 }
+                    // Initialize with placeholders; updateMaterials will fill these
+                    {
+                        position: new THREE.Vector3(),
+                        direction: new THREE.Vector3(),
+                        color: new THREE.Color(0x000000),
+                        enabled: 0.0,
+                        isSpot: 0.0,
+                        cutoff: 0.0
+                    },
+                    {
+                        position: new THREE.Vector3(),
+                        direction: new THREE.Vector3(),
+                        color: new THREE.Color(0x000000),
+                        enabled: 0.0,
+                        isSpot: 0.0,
+                        cutoff: 0.0
+                    },
+                    {
+                        position: new THREE.Vector3(),
+                        direction: new THREE.Vector3(),
+                        color: new THREE.Color(0x000000),
+                        enabled: 0.0,
+                        isSpot: 0.0,
+                        cutoff: 0.0
+                    }
                 ]
             }
         }
@@ -175,7 +211,7 @@ function createFallbackMesh(config) {
 /**
  * Loads a single decoration and adds it to the scene graph.
  */
-async function spawnDecoration(rootSG, config) {
+async function spawnDecoration(rootSG, config, textures) {
     try {
         console.log(`[Decorations] Attempting to load: ${config.id} from ${config.url}`);
 
@@ -185,6 +221,18 @@ async function spawnDecoration(rootSG, config) {
         // 2. Convert to THREE.BufferGeometry
         const geometry = new THREE.BufferGeometry();
         geometry.setAttribute('position', new THREE.BufferAttribute(plyData.positions, 3));
+
+        const count = geometry.attributes.position.count;
+        const uvs = new Float32Array(count * 2);
+        const positions = geometry.attributes.position.array;
+        const PI = Math.PI;
+
+        for (let i = 0; i < count; i++) {
+            const p = new THREE.Vector3().fromArray(positions, i * 3).normalize();
+            uvs[i * 2] = 0.5 + Math.atan2(p.z, p.x) / (2 * PI);
+            uvs[i * 2 + 1] = 0.5 - Math.asin(p.y) / PI;
+        }
+        geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
 
         if (plyData.normals && plyData.normals.length > 0) {
             geometry.setAttribute('normal', new THREE.BufferAttribute(plyData.normals, 3));
@@ -196,18 +244,16 @@ async function spawnDecoration(rootSG, config) {
             geometry.setIndex(new THREE.BufferAttribute(plyData.indices, 1));
         }
 
-        geometry.translate(0, 0.5, 0);
-
-        // 3. Create Mesh
-        const material = createPhongMaterial(config.color);
+        // Get the texture from the main textures object using the ID from the config
+        const texture = config.textureId ? textures[config.textureId] : null;
+        
+        const material = createPhongMaterial(config.color, texture);
         const mesh = new THREE.Mesh(geometry, material);
 
-        // 4. Apply Transforms
         mesh.position.set(config.position[0], config.position[1], config.position[2]);
         mesh.rotation.set(config.rotation[0], config.rotation[1], config.rotation[2]);
         mesh.scale.set(config.scale, config.scale, config.scale);
 
-        // 5. Add to Scene Graph
         const node = new SGNode(mesh);
         node.data.isDecoration = true;
         rootSG.add(node);
@@ -227,10 +273,10 @@ async function spawnDecoration(rootSG, config) {
 /**
  * Main entry point called from index.js
  */
-export function initDecorations(rootSG) {
+export function initDecorations(rootSG, textures) {
     console.log("Initializing Decorations System...");
 
     decorationConfig.forEach(config => {
-        spawnDecoration(rootSG, config);
+        spawnDecoration(rootSG, config, textures);
     });
 }

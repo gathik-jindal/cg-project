@@ -1,18 +1,25 @@
 // --- PHONG VERTEX SHADER ---
 // (No changes needed here, but included for completeness)
 export const vsPhong = `
+// 'uv' is an attribute provided by THREE.js, so we don't declare it here.
 out vec3 v_normal;
 out vec3 v_viewPosition;
+out vec2 v_uv; // Pass UV coordinates to fragment shader
 
 void main() {
     vec4 viewPos4 = modelViewMatrix * vec4(position, 1.0);
     v_viewPosition = viewPos4.xyz;
     
     v_normal = normalize(normalMatrix * normal);
+
+    // Pass the geometry's UV coordinates directly to the fragment shader
+    // The 'uv' variable is available automatically.
+    v_uv = uv;
     
     gl_Position = projectionMatrix * viewPos4;
 }
 `;
+
 
 // --- PHONG FRAGMENT SHADER ---
 export const fsPhong = `
@@ -31,6 +38,7 @@ struct Light {
 
 in vec3 v_normal;
 in vec3 v_viewPosition;
+in vec2 v_uv; // Receive UVs from vertex shader
 
 uniform Light u_lights[MAX_LIGHTS];
 uniform vec3 u_objectColor;
@@ -39,6 +47,9 @@ uniform float u_ka;
 uniform float u_kd;
 uniform float u_ks;
 uniform float u_shininess;
+
+uniform bool u_useTexture;
+uniform sampler2D u_texture;
 
 out vec4 fragColor;
 
@@ -85,7 +96,14 @@ void main() {
         }
     }
 
-    vec3 result = totalColor * u_objectColor;
-    fragColor = vec4(result, 1.0);
+    vec3 finalColor;
+    if (u_useTexture) {
+        vec4 texColor = texture(u_texture, v_uv);
+        finalColor = totalColor * texColor.rgb; // Modulate light with texture
+    } else {
+        finalColor = totalColor * u_objectColor;
+    }
+
+    fragColor = vec4(finalColor, 1.0);
 }
 `;

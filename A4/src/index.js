@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SGNode } from './SceneGraph.js';
 import { vsPhong, fsPhong } from './shaders.js';
 import { initDecorations } from './Decorations.js';
+import { loadAllTextures, textures } from './Texture.js';
 
 let scene, camera, renderer;
 let rootSG;
@@ -55,8 +56,10 @@ const BALL_START_DELAY = 2.21;
 let totalSimulatedTime = 0;
 let spotLightBallFocus; // which ball the spotlight is following
 
-init();
-animate();
+(async () => {
+    await init();
+    animate();
+})();
 
 function createUI() {
     const container = document.createElement('div');
@@ -117,7 +120,9 @@ function createUI() {
     });
 }
 
-function init() {
+async function init() {
+
+    await loadAllTextures();
     scene = new THREE.Scene();
 
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -156,7 +161,7 @@ function init() {
     createLightVisuals();
 
     // --- LOAD DECORATIONS ---
-    initDecorations(rootSG);
+    initDecorations(rootSG, textures);
     // ----------------------
 
     spotLightBallFocus = ballNode; // Start by following the first ball
@@ -227,7 +232,7 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-function createPhongMaterial(colorHex) {
+function createPhongMaterial(colorHex, texture = null) {
     return new THREE.ShaderMaterial({
         glslVersion: THREE.GLSL3,
         vertexShader: vsPhong,
@@ -238,6 +243,8 @@ function createPhongMaterial(colorHex) {
             u_kd: { value: 0.6 },
             u_ks: { value: 0.8 },
             u_shininess: { value: 64.0 },
+            u_useTexture: { value: texture !== null },
+            u_texture: { value: texture },
             u_lights: {
                 value: [
                     // Initialize with placeholders; updateMaterials will fill these
@@ -586,7 +593,7 @@ function createLightVisuals() {
 // -----------------------
 function createRamp1() {
     const geom = new THREE.BoxGeometry(20, 0.2, 3);
-    const mat = createPhongMaterial(0x444444);
+    const mat = createPhongMaterial(0x444444, textures.concrete);
     const mesh = new THREE.Mesh(geom, mat);
     mesh.position.set(10, -0.5, 0);
     mesh.rotation.z = Math.PI / 6;
@@ -597,7 +604,7 @@ function createRamp1() {
 
 function createWall() {
     const geom = new THREE.BoxGeometry(50, 50, 1);
-    const mat = createPhongMaterial(0x0000ff);
+    const mat = createPhongMaterial(0x0000ff, textures.brick);
     const mesh = new THREE.Mesh(geom, mat);
 
     mesh.position.set(-50, -58, -40);
@@ -610,7 +617,7 @@ function createWall() {
 
 function createWall2() {
     const geom = new THREE.BoxGeometry(50, 50, 1);
-    const mat = createPhongMaterial(0x0000ff);
+    const mat = createPhongMaterial(0x0000ff, textures.brick);
     const mesh = new THREE.Mesh(geom, mat);
 
     mesh.position.set(-120, -58, 25);
@@ -645,7 +652,7 @@ function createWall2() {
 
 function createGround() {
     const geom = new THREE.BoxGeometry(400, 1, 400);
-    const mat = createPhongMaterial(0x444444);
+    const mat = createPhongMaterial(0x444444, textures.floor);
     const mesh = new THREE.Mesh(geom, mat);
 
     mesh.position.set(-20, -84, 0);
@@ -658,8 +665,9 @@ function createGround() {
 // Rolling ball
 // -----------------------
 function createRollingBall() {
+
     const geom = new THREE.SphereGeometry(1, 32, 32);
-    const mat = createPhongMaterial(0xff0000);
+    const mat = createPhongMaterial(0xff0000, textures.checkerboard);
     const mesh = new THREE.Mesh(geom, mat);
 
 
@@ -740,7 +748,24 @@ function createRollingBall() {
             const v = node.velocity.clone();
             v.y = 0; // force flat motion
             ball.position.add(v.multiplyScalar(dt));
-            return;
+            
+        }
+
+        const velocity = node.velocity;
+        const radius = node.data.radius;
+        const speed = velocity.length();
+
+        if (speed > 0.01) {
+            // 1. Calculate rotation axis (perpendicular to velocity)
+            const rotationAxis = new THREE.Vector3(velocity.z, 0, -velocity.x).normalize();
+
+            // 2. Calculate angle of rotation based on distance traveled
+            const distance = speed * dt;
+            const angle = distance / radius;
+
+            // 3. Create a delta rotation and apply it
+            const deltaRotation = new THREE.Quaternion().setFromAxisAngle(rotationAxis, angle);
+            ball.quaternion.premultiply(deltaRotation);
         }
     });
 
@@ -755,7 +780,7 @@ function createDiscPoleBar() {
     // 1. Disc
     // ------------------------
     const discGeom = new THREE.CylinderGeometry(3, 3, 0.2, 64);
-    const discMat = createPhongMaterial(0x555555);
+    const discMat = createPhongMaterial(0x555555, textures.stone);
     const discMesh = new THREE.Mesh(discGeom, discMat);
     discMesh.position.set(-20.5, -22, 0);
     discMesh.scale.set(1.5, 1.5, 1.5);
@@ -775,7 +800,7 @@ function createDiscPoleBar() {
     // 2. Vertical Pole
     // ------------------------
     const poleGeom = new THREE.CylinderGeometry(0.1, 0.1, 4, 16);
-    const poleMat = createPhongMaterial(0xff0000);
+    const poleMat = createPhongMaterial(0xff0000, textures.rust);
     const poleMesh = new THREE.Mesh(poleGeom, poleMat);
 
     poleMesh.position.x = -2.8;
@@ -787,7 +812,7 @@ function createDiscPoleBar() {
     // 3. Horizontal pole
     // ------------------------
     const barGeom = new THREE.CylinderGeometry(0.05, 0.05, 3, 16);
-    const barMat = createPhongMaterial(0xff0000);
+    const barMat = createPhongMaterial(0xff0000, textures.rust);
     const barMesh = new THREE.Mesh(barGeom, barMat);
 
     barMesh.rotation.z = Math.PI / 2;
@@ -807,7 +832,7 @@ function createDiscPoleBar() {
 
     // Swinging pole
     const swingGeom = new THREE.CylinderGeometry(0.05, 0.05, 5, 16);
-    const swingMat = createPhongMaterial(0x00ff00);
+    const swingMat = createPhongMaterial(0x00ff00, textures.rust);
     const swingMesh = new THREE.Mesh(swingGeom, swingMat);
     swingMesh.rotation.z = Math.PI / 2;
 
@@ -829,7 +854,7 @@ function createDiscPoleBar() {
 
 function createRollingBall2() {
     const geom = new THREE.SphereGeometry(2, 32, 32);
-    const mat = createPhongMaterial(0xff0000);
+    const mat = createPhongMaterial(0xff0000, textures.metal);
     const mesh = new THREE.Mesh(geom, mat);
 
 
@@ -845,7 +870,24 @@ function createRollingBall2() {
         const ball = node.object3D;
         const v = node.velocity.clone();
         ball.position.add(v.multiplyScalar(dt));
-        return;
+        
+
+        const velocity = node.velocity;
+        const radius = node.data.radius;
+        const speed = velocity.length();
+
+        if (speed > 0.01) {
+            // 1. Calculate rotation axis (perpendicular to velocity)
+            const rotationAxis = new THREE.Vector3(velocity.z, 0, -velocity.x).normalize();
+
+            // 2. Calculate angle of rotation based on distance traveled
+            const distance = speed * dt;
+            const angle = distance / radius;
+
+            // 3. Create a delta rotation and apply it
+            const deltaRotation = new THREE.Quaternion().setFromAxisAngle(rotationAxis, angle);
+            ball.quaternion.premultiply(deltaRotation);
+        }
     });
 }
 
