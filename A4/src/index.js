@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { SGNode } from './SceneGraph.js';
 import { vsPhong, fsPhong } from './shaders.js';
+import { initDecorations } from './Decorations.js';
 
 let scene, camera, renderer;
 let rootSG;
@@ -52,6 +53,7 @@ let discNode, poleNode, barNode, swingNode, swingPivot, ballNode, ramp1Node, wal
 let light0Node, light1Node, light2Node;
 const BALL_START_DELAY = 2.21;
 let totalSimulatedTime = 0;
+let spotLightBallFocus; // which ball the spotlight is following
 
 init();
 animate();
@@ -83,8 +85,8 @@ function createUI() {
         camBtn.innerText = isFollowMode ? "Camera: Following Ball" : "Camera: Global";
 
         if (isFollowMode) {
-            if (ballNode) {
-                const ballPos = ballNode.object3D.position;
+            if (spotLightBallFocus) {
+                const ballPos = spotLightBallFocus.object3D.position;
                 controls.target.copy(ballPos);
                 camera.position.set(ballPos.x + 30, ballPos.y + 20, ballPos.z + 30);
             }
@@ -110,7 +112,6 @@ function createUI() {
         l2Btn.innerText = `Tracking Spot (${lightState.light2.enabled ? "ON" : "OFF"})`;
     });
 
-    // 3. RESET BUTTON (New)
     createBtn("↺ RESET SIMULATION", () => {
         resetSimulation();
     });
@@ -154,6 +155,12 @@ function init() {
 
     createLightVisuals();
 
+    // --- LOAD DECORATIONS ---
+    initDecorations(rootSG);
+    // ----------------------
+
+    spotLightBallFocus = ballNode; // Start by following the first ball
+
     window.addEventListener('resize', onResize);
 }
 
@@ -168,8 +175,8 @@ function animate() {
     totalSimulatedTime += fixed_dt;
 
     // 2. Camera Follow Logic
-    if (isFollowMode && ballNode) {
-        const ballPos = ballNode.object3D.position;
+    if (isFollowMode && spotLightBallFocus) {
+        const ballPos = spotLightBallFocus.object3D.position;
         const offset = camera.position.clone().sub(controls.target);
         controls.target.copy(ballPos);
         camera.position.copy(ballPos).add(offset);
@@ -181,8 +188,10 @@ function animate() {
     // --- LIGHTING LOGIC ---
 
     // 1. Update Tracking Light Position (Light 2)
-    if (ballNode) {
-        const targetPos = ballNode.object3D.position;
+    // CHANGE THIS LINE: Use 'spotLightBallFocus' instead of 'ballNode'
+    if (spotLightBallFocus) {
+        const targetPos = spotLightBallFocus.object3D.position;
+
         // Update the DATA state
         lightState.light2.position.set(targetPos.x, targetPos.y + 20, targetPos.z);
 
@@ -353,7 +362,7 @@ function handleWallBallCollision(ballNode) {
 
         // Bounce (reflect z component)
         vel.z = -vel.z * REST;
-        console.log(vel);
+        // console.log(vel);
 
         return true;
     }
@@ -375,7 +384,7 @@ function handleWall2Collision(ballNode) {
         vel.x = speed;
         vel.y = 0;
         vel.z = 0;
-        console.log(pos.z);
+        // console.log(pos.z);
     }
 }
 
@@ -436,7 +445,7 @@ function handleBarBallCollision(ballNode, barNode) {
 
             // New Velocity = Old Velocity + Impulse
             ballNode.velocity.add(impulse);
-            console.log(ballNode.velocity);
+            // console.log(ballNode.velocity);
 
             // 5. Position Correction (prevent sinking/tunneling)
             // Push the ball out along the normal so it no longer overlaps
@@ -471,6 +480,8 @@ function handleBallBallCollison(ballA, ballB) {
     if (distance > sumOfRadii) {
         return false; // No collision
     }
+
+    spotLightBallFocus = ball2Node; // Switch spotlight to follow ball 2
 
 
     const uA = ballA.velocity.x;
@@ -627,7 +638,6 @@ function createGround() {
 
     mesh.position.set(-20, -84, 0);
 
-
     groundNode = new SGNode(mesh);
     rootSG.add(groundNode);
 }
@@ -674,7 +684,7 @@ function createRollingBall() {
         const ball = node.object3D;
         const ramp = ramp1Node.object3D;
         let rampEndX = 4;
-        console.log(node.state);
+        // console.log(node.state);
         if (node.state === "ON_RAMP") {
 
             // 1. Compute ramp normal
@@ -696,7 +706,7 @@ function createRollingBall() {
             // 5. Check if ball leaves ramp
             if (ball.position.x < rampEndX) {
                 node.state = "IN_AIR";
-                console.log("in freefall");
+                // console.log("in freefall");
             }
 
         } else if (node.state === "IN_AIR") {
@@ -726,6 +736,8 @@ function createRollingBall() {
     rootSG.add(ballNode);
 }
 
+// index.js
+
 function createDiscPoleBar() {
     // ------------------------
     // 1. Disc
@@ -735,14 +747,17 @@ function createDiscPoleBar() {
     const discMesh = new THREE.Mesh(discGeom, discMat);
     discMesh.position.set(-20.5, -22, 0);
     discMesh.scale.set(1.5, 1.5, 1.5);
+
     discNode = new SGNode(discMesh);
     rootSG.add(discNode);
-    let angle = 0;
-    let pivot_angle = 0;
+
+    // CHANGE: Initialize angle in data
+    discNode.data.angle = 0;
 
     discNode.setUpdateCallback((self, dt) => {
-        angle += 0.5 * dt;
-        self.object3D.rotation.y = angle;
+        // CHANGE: Update data.angle instead of local variable
+        self.data.angle += 0.5 * dt;
+        self.object3D.rotation.y = self.data.angle;
     });
 
     // 2. Vertical Pole
@@ -751,25 +766,20 @@ function createDiscPoleBar() {
     const poleMat = createPhongMaterial(0xff0000);
     const poleMesh = new THREE.Mesh(poleGeom, poleMat);
 
-
-    poleMesh.position.x = -2.8;  // half of the pole height
+    poleMesh.position.x = -2.8;
     poleMesh.position.y = 2;
 
     poleNode = new SGNode(poleMesh);
     discNode.add(poleNode);
 
-    // Pole motion around circle boundary
-    const radius = 5;
-
-    // ------------------------
     // 3. Horizontal pole
     // ------------------------
     const barGeom = new THREE.CylinderGeometry(0.05, 0.05, 3, 16);
     const barMat = createPhongMaterial(0xff0000);
     const barMesh = new THREE.Mesh(barGeom, barMat);
 
-    barMesh.rotation.z = Math.PI / 2; // make it horizontal
-    barMesh.position.y = 1.9; // same height as pole top
+    barMesh.rotation.z = Math.PI / 2;
+    barMesh.position.y = 1.9;
     barMesh.position.x = -1.5;
 
     barNode = new SGNode(barMesh);
@@ -780,35 +790,29 @@ function createDiscPoleBar() {
     barNode.add(swingPivot);
     swingPivot.object3D.position.y = 4;
 
+    // CHANGE: Initialize angle in data
+    swingPivot.data.angle = 0;
 
-    //Swinging pole
+    // Swinging pole
     const swingGeom = new THREE.CylinderGeometry(0.05, 0.05, 5, 16);
     const swingMat = createPhongMaterial(0x00ff00);
     const swingMesh = new THREE.Mesh(swingGeom, swingMat);
-    swingMesh.rotation.z = Math.PI / 2; // make it horizontal
-
-    // The cylinder's origin is at its center.
-    // Translate it down by half its height so the top is at the pivot point.
+    swingMesh.rotation.z = Math.PI / 2;
 
     swingNode = new SGNode(swingMesh);
-    // Add the swing to the pivot, not the bar
     swingPivot.add(swingNode);
     swingNode.object3D.position.y = -2.5;
     swingNode.object3D.position.x = -2.5;
-    swingNode.data.radius = 0.05; // <-- ADD THIS
+    swingNode.data.radius = 0.05;
     swingNode.data.length = 5;
 
     // Apply the swinging animation to the pivot
     swingPivot.setUpdateCallback((self, dt) => {
-        pivot_angle += 3 * dt;
-        swingPivot.data.angularVelocity = 3;
-        // Use Math.sin for a back-and-forth swinging motion
-        self.object3D.rotation.y = pivot_angle;
-
-
+        // CHANGE: Update data.angle instead of local variable
+        self.data.angle += 3 * dt;
+        self.data.angularVelocity = 3;
+        self.object3D.rotation.y = self.data.angle;
     });
-
-
 }
 
 function createRollingBall2() {
@@ -924,19 +928,21 @@ function updateMaterials(node) {
     }
 }
 
+// index.js
+
 function resetSimulation() {
-    // 1. Reset Global Time (restarts the 2.21s delay)
+    // 1. Reset Global Time
     totalSimulatedTime = 0;
 
-    // 2. Reset Ball 1 (The Red Rolling Ball)
+    // 2. Reset Ball 1
     if (ballNode) {
-        ballNode.object3D.position.set(18, 5.2, 0); // Original start pos
+        ballNode.object3D.position.set(18, 5.2, 0);
         ballNode.object3D.rotation.set(0, 0, 0);
         ballNode.velocity.set(0, 0, 0);
-        ballNode.state = "WAITING"; // Go back to waiting for delay
+        ballNode.state = "WAITING";
     }
 
-    // 3. Reset Ball 2 (The Ball near the domino)
+    // 3. Reset Ball 2
     if (ball2Node) {
         ball2Node.object3D.position.set(-30, -81, 24.50727456099691);
         ball2Node.object3D.rotation.set(0, 0, 0);
@@ -949,14 +955,27 @@ function resetSimulation() {
         dominoNode.data.angle = 0;
         dominoNode.data.angularVelocity = 0;
         dominoNode.data.fallen = false;
-        dominoNode.object3D.rotation.z = 0; // Stand it back up
+        dominoNode.object3D.rotation.z = 0;
     }
 
-    // 5. Reset Camera Target (If we are following)
-    if (isFollowMode && ballNode) {
-        const ballPos = ballNode.object3D.position;
+    // --- NEW: Reset Disc and Swing ---
+    if (discNode) {
+        discNode.data.angle = 0;
+        discNode.object3D.rotation.y = 0;
+    }
+    if (swingPivot) {
+        swingPivot.data.angle = 0;
+        swingPivot.object3D.rotation.y = 0;
+    }
+    // ---------------------------------
+
+    // 5. Reset Spotlight
+    spotLightBallFocus = ballNode;
+
+    // 6. Reset Camera
+    if (isFollowMode && spotLightBallFocus) {
+        const ballPos = spotLightBallFocus.object3D.position;
         controls.target.copy(ballPos);
-        // Snap camera back to start position relative to ball
         camera.position.set(ballPos.x + 30, ballPos.y + 20, ballPos.z + 30);
     }
 }
