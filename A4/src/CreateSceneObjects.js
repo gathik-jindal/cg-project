@@ -286,7 +286,24 @@ export function createRollingBall(rootSG,
             const v = node.velocity.clone();
             v.y = 0; // force flat motion
             ball.position.add(v.multiplyScalar(dt));
-            return;
+            // return;
+        }
+
+        const velocity = node.velocity;
+        const radius = node.data.radius;
+        const speed = velocity.length();
+
+        if (speed > 0.01) {
+            // 1. Calculate rotation axis (perpendicular to velocity)
+            const rotationAxis = new THREE.Vector3(velocity.z, 0, -velocity.x).normalize();
+
+            // 2. Calculate angle of rotation based on distance traveled
+            const distance = speed * dt;
+            const angle = distance / radius;
+
+            // 3. Create a delta rotation and apply it
+            const deltaRotation = new THREE.Quaternion().setFromAxisAngle(rotationAxis, angle);
+            ball.quaternion.premultiply(deltaRotation);
         }
     });
 
@@ -401,6 +418,23 @@ export function createRollingBall2(rootSG, dominoNode, handleBallDominoCollision
         const ball = node.object3D;
         const v = node.velocity.clone();
         ball.position.add(v.multiplyScalar(dt));
+        const velocity = node.velocity;
+        const radius = node.data.radius;
+        const speed = velocity.length();
+
+        if (speed > 0.01) {
+            // 1. Calculate rotation axis (perpendicular to velocity)
+            const rotationAxis = new THREE.Vector3(velocity.z, 0, -velocity.x).normalize();
+
+            // 2. Calculate angle of rotation based on distance traveled
+            const distance = speed * dt;
+            const angle = distance / radius;
+
+            // 3. Create a delta rotation and apply it
+            const deltaRotation = new THREE.Quaternion().setFromAxisAngle(rotationAxis, angle);
+            ball.quaternion.premultiply(deltaRotation);
+        }
+
         return;
     });
 

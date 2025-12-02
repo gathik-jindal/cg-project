@@ -11,7 +11,7 @@ const decorationConfig = [
         id: 'airplane_1',
         url: '../assets/airplane.ply',
         // Lowered Y to -83.5 (Floor). Increased scale to 10.
-        position: [20, -43.5, 20],
+        position: [20, -43.5 + 20, 20],
         rotation: [-Math.PI / 2, 0, 0],
         scale: 40.0,
         color: 0x888888,
@@ -21,7 +21,7 @@ const decorationConfig = [
         id: 'airplane_1',
         url: '../assets/airplane.ply',
         // Lowered Y to -83.5 (Floor). Increased scale to 10.
-        position: [-30, -43.5, 60],
+        position: [-30, -43, 60],
         rotation: [-Math.PI / 4, -Math.PI, 0],
         scale: 40.0,
         color: 0x888008,
@@ -31,7 +31,7 @@ const decorationConfig = [
         id: 'airplane_1',
         url: '../assets/airplane.ply',
         // Lowered Y to -83.5 (Floor). Increased scale to 10.
-        position: [-70, -43.5, 30],
+        position: [-70, -43, 30],
         rotation: [Math.PI / 4, Math.PI / 2, Math.PI / 4],
         scale: 40.0,
         color: 0x800088,
@@ -41,7 +41,7 @@ const decorationConfig = [
         id: 'ant_1',
         url: '../assets/ant.ply',
         // Lowered Y to -83.5. Increased scale to 5.
-        position: [-40, -83.5, -10],
+        position: [-40, -83 + 20, -10],
         rotation: [0, 0, 0],
         scale: 50.0,
         color: 0x228b22,
@@ -51,7 +51,7 @@ const decorationConfig = [
         id: 'apple_1',
         url: '../assets/apple.ply',
         // Lowered Y to -83.5. Kept scale (or increased slightly).
-        position: [-10, -83.5, 50],
+        position: [-10, -83 + 20, 50],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
         color: 0xffd700,
@@ -61,7 +61,7 @@ const decorationConfig = [
         id: 'apple_2',
         url: '../assets/apple.ply',
         // Lowered Y to -83.5. Kept scale (or increased slightly).
-        position: [-20, -83.5, 50],
+        position: [-20, -83 + 20, 50],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
         color: 0xffd700,
@@ -71,7 +71,7 @@ const decorationConfig = [
         id: 'apple_3',
         url: '../assets/apple.ply',
         // Lowered Y to -83.5. Kept scale (or increased slightly).
-        position: [-20, -83.5, 40],
+        position: [-20, -83 + 20, 40],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
         color: 0xffd700,
@@ -81,7 +81,7 @@ const decorationConfig = [
         id: 'apple_4',
         url: '../assets/apple.ply',
         // Lowered Y to -83.5. Kept scale (or increased slightly).
-        position: [-15, -83.5, 45],
+        position: [-15, -83 + 20, 45],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
         color: 0xffd700,
@@ -91,7 +91,7 @@ const decorationConfig = [
         id: 'apple_5',
         url: '../assets/apple.ply',
         // Lowered Y to -83.5. Kept scale (or increased slightly).
-        position: [-10, -83.5, 45],
+        position: [-10, -83 + 20, 45],
         rotation: [0, -Math.PI / 2, 0],
         scale: 5.0,
         color: 0xffd700,
@@ -111,7 +111,7 @@ const decorationConfig = [
         id: 'beethoven_1',
         url: '../assets/beethoven.ply',
         // Lowered Y to -83.5. Kept scale (or increased slightly).
-        position: [100, -78.5, 40],
+        position: [100, -78.5 + 20, 40],
         rotation: [0, -Math.PI / 2, 0],
         scale: 50.0,
         color: 0x1ff7ff,
@@ -121,7 +121,7 @@ const decorationConfig = [
         id: 'beethoven_2',
         url: '../assets/beethoven.ply',
         // Lowered Y to -83.5. Kept scale (or increased slightly).
-        position: [10, -78.5, -40],
+        position: [10, -78.5 + 20, -40],
         rotation: [0, 0, 0],
         scale: 50.0,
         color: 0x4f00ff,
