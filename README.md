@@ -53,6 +53,10 @@ A Three.js-based application featuring a scene graph implementation with physics
 
 For more details and instructions, see the [A4 README](A4/readme.md).
 
+**Screenshot:**
+
+![A4 Screenshot](A4/ss.png)
+
 ---
 
 ## Getting Started

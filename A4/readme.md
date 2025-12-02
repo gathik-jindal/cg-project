@@ -4,7 +4,6 @@ A Three.js-based application demonstrating a scene graph implementation with phy
 
 ## Screenshot
 
-<!-- Add your screenshot here as ss.png -->
 ![A4 Screenshot](ss.png)
 
 ## About
