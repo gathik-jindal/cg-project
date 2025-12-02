@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SGNode } from './SceneGraph.js';
 import { vsPhong, fsPhong } from './shaders.js';
+import * as Physics from './Physics.js';
 
 const BALL_START_DELAY = 2.21
 
@@ -184,11 +185,9 @@ export function createGround(rootSG) {
  * @param {SGNode} ramp1Node The ramp node
  * @param {SGNode} swingNode The swing node
  * @param {SGNode} ball2Node The second ball node
- * @param {Function} handleGroundBallCollision Collision handler for ground
- * @param {Function} handleWallBallCollision Collision handler for wall
- * @param {Function} handleWall2Collision Collision handler for second wall
- * @param {Function} handleBarBallCollision Collision handler for bar
- * @param {Function} handleBallBallCollison Collision handler for ball-ball
+ * @param {SGNode} discNode The disc node
+ * @param {SGNode} swingPivot The pivot node of the swing arm
+ * @param {Function} setFocusCallback Callback to update the spotlight focus ball
  * @returns SGNode of the rolling ball
  */
 export function createRollingBall(rootSG,
@@ -196,11 +195,9 @@ export function createRollingBall(rootSG,
     ramp1Node,
     swingNode,
     ball2Node,
-    handleGroundBallCollision,
-    handleWallBallCollision,
-    handleWall2Collision,
-    handleBarBallCollision,
-    handleBallBallCollison,
+    discNode,
+    swingPivot,
+    setFocusCallback
 ) {
     const geom = new THREE.SphereGeometry(1, 32, 32);
     const mat = createPhongMaterial(0xff0000);
@@ -224,15 +221,19 @@ export function createRollingBall(rootSG,
             }
         }
 
-        if (handleBarBallCollision(ballNode, swingNode)) {
+        if (Physics.handleBarBallCollision(ballNode, swingNode, discNode, swingPivot)) {
             return; // collision handled
         }
 
-        handleWallBallCollision(ballNode);
-        handleWall2Collision(ballNode);
+        Physics.handleWallBallCollision(ballNode);
+        Physics.handleWall2Collision(ballNode);
         // checkWallCollision(ballNode, wall2Node);
-        handleGroundBallCollision(ballNode)
-        handleBallBallCollison(ballNode, ball2Node);
+        Physics.handleGroundBallCollision(ballNode)
+        Physics.handleBallBallCollison(ballNode, ball2Node, (ball) => {
+            if (setFocusCallback) {
+                setFocusCallback(ball);
+            }
+        });
 
         const ball = node.object3D;
         const ramp = ramp1Node.object3D;
