@@ -3,10 +3,35 @@ export const appState = {
     useBlinn: true,       // true = Blinn-Phong, false = Standard Phong
     camera: { z: -5.0, min: -2.0, max: -20.0 },
     texture: 'none', // Add: 'none', 'wood', 'checker'
-    texMapping: 'spherical', 
+    texMapping: 'spherical',
 
     // Lighting Toggle
     showLights: true,
+
+    modelList: [
+        'beethoven.ply',
+        'hind.ply',
+        'ant.ply',
+        'airplane.ply',
+        'balance.ply',
+        'big_atc.ply',
+        'big_dodge.ply',
+        'big_porsche.ply',
+        'big_spider.ply',
+        'canstick.ply',
+        'chopper.ply',
+        'cow.ply',
+        'cube.ply',
+        'dart.ply',
+        'dodecahedron.ply',
+        'egret.ply',
+        'ellell.ply',
+        'egret.ply',
+        'f16.ply',
+        'footbones.ply',
+        'fracttree.ply',
+    ],
+    currentModelIndex: 0,
 
     // Global Light Settings
     lights: [

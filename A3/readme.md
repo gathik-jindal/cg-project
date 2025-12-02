@@ -1,11 +1,10 @@
 # Assignment 3
 
-A WebGL application demonstrating 3D object rendering with various shading techniques.
+A WebGL application demonstrating 3D object rendering with various shading and texturing techniques.
 
 ## Screenshot
 
 ![A3 Screenshot](ss.png)
-
 
 ## About
 
@@ -43,3 +42,6 @@ A WebGL application demonstrating 3D object rendering with various shading techn
 - `C` / `V`: Increase/Decrease Specular Strength.
 - `Mouse`: Rotate scene.
 - `Scroll`: Zoom.
+- `T`: Toggle Texture (None/Wood/Checkerboard).
+- `M`: Toggle Mapping (Spherical/Cylindrical).
+- `Space` / `.`: Cycle Models.
