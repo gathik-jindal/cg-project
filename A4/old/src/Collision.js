@@ -96,8 +96,8 @@ export function handleWall2Collision(ballNode) {
     const vel = ballNode.velocity;
     const r = ballNode.data.radius;
 
-    if (pos.x - r < -120) {
-        pos.x = -120 + r;
+    if (pos.x - r < -113) {
+        pos.x = -113 + r;
         const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
         vel.x = speed;
         vel.y = 0;
