@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { SGNode } from './SceneGraph.js';
 import { vsPhong, fsPhong } from './shaders.js';
 import * as Physics from './Physics.js';
+import { textures } from './Texture.js';
 
 const BALL_START_DELAY = 2.21
 
@@ -37,9 +38,10 @@ export function createLightVisuals(rootSG, lightState) {
 
 /** Creates a Phong Shader Material with the given color.
  * @param {number} colorHex The color of the material in hexadecimal.
+ * @param {THREE.Texture} [texture=null] Optional texture to apply to the material.
  * @returns {THREE.ShaderMaterial} The created Phong shader material.
  */
-export function createPhongMaterial(colorHex) {
+function createPhongMaterial(colorHex, texture = null) {
     return new THREE.ShaderMaterial({
         glslVersion: THREE.GLSL3,
         vertexShader: vsPhong,
@@ -50,6 +52,8 @@ export function createPhongMaterial(colorHex) {
             u_kd: { value: 0.6 },
             u_ks: { value: 0.8 },
             u_shininess: { value: 64.0 },
+            u_useTexture: { value: texture !== null },
+            u_texture: { value: texture },
             u_lights: {
                 value: [
                     // Initialize with placeholders; updateMaterials will fill these
@@ -90,7 +94,7 @@ export function createPhongMaterial(colorHex) {
  */
 export function createRamp1(rootSG) {
     const geom = new THREE.BoxGeometry(20, 0.2, 3);
-    const mat = createPhongMaterial(0x444444);
+    const mat = createPhongMaterial(0x444444, textures.concrete);
     const mesh = new THREE.Mesh(geom, mat);
     mesh.position.set(10, -0.5, 0);
     mesh.rotation.z = Math.PI / 6;
@@ -108,7 +112,7 @@ export function createRamp1(rootSG) {
  */
 export function createWall(rootSG) {
     const geom = new THREE.BoxGeometry(50, 50, 1);
-    const mat = createPhongMaterial(0x0000ff);
+    const mat = createPhongMaterial(0x0000ff, textures.brick);
     const mesh = new THREE.Mesh(geom, mat);
 
     mesh.position.set(-50, -58, -40);
@@ -127,7 +131,7 @@ export function createWall(rootSG) {
  */
 export function createWall2(rootSG) {
     const geom = new THREE.BoxGeometry(50, 50, 1);
-    const mat = createPhongMaterial(0x0000ff);
+    const mat = createPhongMaterial(0x0000ff, textures.brick);
     const mesh = new THREE.Mesh(geom, mat);
 
     mesh.position.set(-120, -58, 25);
@@ -167,7 +171,7 @@ export function createWall2(rootSG) {
  */
 export function createGround(rootSG) {
     const geom = new THREE.BoxGeometry(400, 1, 400);
-    const mat = createPhongMaterial(0x444444);
+    const mat = createPhongMaterial(0x444444, textures.floor);
     const mesh = new THREE.Mesh(geom, mat);
 
     mesh.position.set(-20, -84, 0);
@@ -200,7 +204,7 @@ export function createRollingBall(rootSG,
     setFocusCallback
 ) {
     const geom = new THREE.SphereGeometry(1, 32, 32);
-    const mat = createPhongMaterial(0xff0000);
+    const mat = createPhongMaterial(0xff0000, textures.checkerboard);
     const mesh = new THREE.Mesh(geom, mat);
 
     mesh.position.set(18, 5.2, 0);
@@ -300,7 +304,7 @@ export function createDiscPoleBar(rootSG) {
     // 1. Disc
     // ------------------------
     const discGeom = new THREE.CylinderGeometry(3, 3, 0.2, 64);
-    const discMat = createPhongMaterial(0x555555);
+    const discMat = createPhongMaterial(0x555555, textures.stone);
     const discMesh = new THREE.Mesh(discGeom, discMat);
     discMesh.position.set(-20.5, -22, 0);
     discMesh.scale.set(1.5, 1.5, 1.5);
@@ -320,7 +324,7 @@ export function createDiscPoleBar(rootSG) {
     // 2. Vertical Pole
     // ------------------------
     const poleGeom = new THREE.CylinderGeometry(0.1, 0.1, 4, 16);
-    const poleMat = createPhongMaterial(0xff0000);
+    const poleMat = createPhongMaterial(0xff0000, textures.rust);
     const poleMesh = new THREE.Mesh(poleGeom, poleMat);
 
     poleMesh.position.x = -2.8;
@@ -332,7 +336,7 @@ export function createDiscPoleBar(rootSG) {
     // 3. Horizontal pole
     // ------------------------
     const barGeom = new THREE.CylinderGeometry(0.05, 0.05, 3, 16);
-    const barMat = createPhongMaterial(0xff0000);
+    const barMat = createPhongMaterial(0xff0000, textures.rust);
     const barMesh = new THREE.Mesh(barGeom, barMat);
 
     barMesh.rotation.z = Math.PI / 2;
@@ -352,7 +356,7 @@ export function createDiscPoleBar(rootSG) {
 
     // Swinging pole
     const swingGeom = new THREE.CylinderGeometry(0.05, 0.05, 5, 16);
-    const swingMat = createPhongMaterial(0x00ff00);
+    const swingMat = createPhongMaterial(0x00ff00, textures.rust);
     const swingMesh = new THREE.Mesh(swingGeom, swingMat);
     swingMesh.rotation.z = Math.PI / 2;
 
@@ -382,7 +386,7 @@ export function createDiscPoleBar(rootSG) {
  */
 export function createRollingBall2(rootSG, dominoNode, handleBallDominoCollision) {
     const geom = new THREE.SphereGeometry(2, 32, 32);
-    const mat = createPhongMaterial(0xff0000);
+    const mat = createPhongMaterial(0xff0000, textures.metal);
     const mesh = new THREE.Mesh(geom, mat);
 
     mesh.position.set(-30, -81, 24.50727456099691);

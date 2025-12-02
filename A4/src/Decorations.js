@@ -246,7 +246,7 @@ async function spawnDecoration(rootSG, config, textures) {
 
         // Get the texture from the main textures object using the ID from the config
         const texture = config.textureId ? textures[config.textureId] : null;
-        
+
         const material = createPhongMaterial(config.color, texture);
         const mesh = new THREE.Mesh(geometry, material);
 
