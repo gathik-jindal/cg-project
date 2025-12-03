@@ -50,7 +50,7 @@ async function main() {
     let meshBuffers = null;
     let lightCubeBuffers = initCubeBuffers(gl); // Initialize immediately
 
-    // --- NEW: Function to load model by index ---
+    // --- function to load model by index ---
     async function loadCurrentModel() {
         const filename = appState.modelList[appState.currentModelIndex];
         console.log(`Loading: ${filename}...`);
@@ -99,7 +99,6 @@ async function main() {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         gl.enable(gl.DEPTH_TEST);
 
-        // ... (Keep your existing Matrix setup code here) ...
         const fieldOfView = 45 * Math.PI / 180;
         const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
         mat4.perspective(projectionMatrix, fieldOfView, aspect, 0.1, 100.0);
@@ -109,11 +108,9 @@ async function main() {
         mat4.rotate(viewMatrix, viewMatrix, appState.rotation.x, [1, 0, 0]);
         mat4.rotate(viewMatrix, viewMatrix, appState.rotation.y, [0, 1, 0]);
 
-        // --- PART A: Draw Objects ---
         const program = (appState.shadingMode === 'gouraud') ? gouraudProgram : phongProgram;
         gl.useProgram(program);
 
-        // ... (Keep your Texture Setup code here) ...
         const useTexture = (appState.texture !== 'none');
         if (useTexture) {
             const tex = (appState.texture === 'wood') ? woodTexture : checkerTexture;
@@ -133,7 +130,6 @@ async function main() {
         }
 
         appState.objects.forEach(obj => {
-            // ... (Keep your Object Matrix/Uniform code here) ...
             mat4.identity(modelMatrix);
             mat4.translate(modelMatrix, modelMatrix, obj.position);
             mat4.rotate(modelMatrix, modelMatrix, obj.rotation.x * Math.PI / 180, [1, 0, 0]);
@@ -167,8 +163,7 @@ async function main() {
             gl.drawElements(gl.TRIANGLES, meshBuffers.elementCount, gl.UNSIGNED_SHORT, 0);
         });
 
-        // --- PART B: Draw Lights ---
-        // ... (Keep your Light Drawing code here - unchanged) ...
+        // Light Drawing code here
         if (appState.showLights) {
             gl.useProgram(simpleProgram);
             appState.lights.forEach(light => {
