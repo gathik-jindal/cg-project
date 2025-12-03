@@ -73,12 +73,12 @@ async function main() {
     // Initial Load
     await loadCurrentModel();
 
-    // 2. Initialize Programs
+    // Initialize Programs
     gouraudProgram = createProgram(gl, vsGouraud, fsGouraud);
     phongProgram = createProgram(gl, vsPhong, fsPhong);
     simpleProgram = createProgram(gl, vsSimple, fsSimple);
 
-    // 3. Load textures
+    // Load textures
     woodTexture = loadTexture(gl, '../assets/textures/wood-grain_texture.jpg');
     checkerTexture = loadTexture(gl, '../assets/textures/checkerboard_texture.jpg');
 
@@ -87,7 +87,7 @@ async function main() {
     updateUI();
 
     function render(time) {
-        // Ensure we don't render before the first model is loaded
+        // don't render before the first model is loaded
         if (!meshBuffers) {
             requestAnimationFrame(render);
             return;
