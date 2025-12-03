@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// This object will hold all your loaded textures
+// This object will hold all loaded textures
 export const textures = {};
 
 // Create a single loader to use for all textures
@@ -11,7 +11,7 @@ const textureLoader = new THREE.TextureLoader();
  */
 export function loadAllTextures() {
     const promises = [
-        // Add each texture you want to load here
+        // Add each texture to load here
         new Promise(resolve => {
             const texture = textureLoader.load('../assets/textures/checkerboard_texture.jpg', resolve);
             texture.wrapS = THREE.RepeatWrapping;
@@ -72,7 +72,7 @@ export function loadAllTextures() {
             texture.wrapT = THREE.RepeatWrapping;
             textures.concrete = texture;
         }),
-        
+
 
     ];
 

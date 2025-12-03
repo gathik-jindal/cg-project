@@ -34,15 +34,15 @@ export function distPointToSegment(P, A, B) {
  * @returns {THREE.Vector3} The velocity vector of the bar at the closest point.
  */
 export function computeBarVelocity(closestPoint, discNode, swingPivot) {
-    // 1. Get kinematics of the Parent Disc
+    // Get kinematics of the Parent Disc
     // The disc rotates around its own position on the Y axis
-    const discAngularSpeed = 0.9; // Matches your update loop: angle += 0.9 * dt
+    const discAngularSpeed = 0.9; // Matches update loop: angle += 0.9 * dt
     const discOrigin = discNode.object3D.position.clone(); // (-20.5, -22, 0)
     const discAxis = new THREE.Vector3(0, 1, 0); // Rotates around Y
 
-    // 2. Get kinematics of the Swing Arm
+    // Get kinematics of the Swing Arm
     // The swing rotates around the pivot on the Y axis (relative to parent)
-    const swingAngularSpeed = 3.0; // Matches your update loop: pivot_angle += 3 * dt
+    const swingAngularSpeed = 3.0; // Matches update loop: pivot_angle += 3 * dt
 
     // We need the world position of the Swing Pivot (where the bar attaches)
     const swingPivotObj = swingPivot.object3D;
@@ -81,7 +81,7 @@ export function handleGroundBallCollision(ballNode) {
     const vel = ballNode.velocity;
     const r = ballNode.data.radius;
 
-    const GROUND_Y = -83;   // <-- your ground height
+    const GROUND_Y = -83;   // ground height
 
     // Check if ball is below or touching ground
     if (pos.y - r <= GROUND_Y) {
@@ -143,7 +143,6 @@ export function handleWall2Collision(ballNode) {
         pos.x = -120 + r;
         const speed = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
 
-        // Overwrite velocity: Direction (1, 0, 0) * Speed
         vel.x = speed;
         vel.y = 0;
         vel.z = 0;
@@ -172,8 +171,6 @@ export function handleBarBallCollision(ballNode, barNode, discNode, swingPivot) 
 
     // 2. Bar endpoints (in world space)
     bar.updateMatrixWorld(true);
-    // Note: Your bar geometry is rotated, so we ensure we get the correct top/bottom points
-    // Cylinder is usually Y-aligned, but you rotated Z. Let's rely on matrix transformation.
     const A = new THREE.Vector3(0, -barLength / 2, 0).applyMatrix4(bar.matrixWorld);
     const B = new THREE.Vector3(0, barLength / 2, 0).applyMatrix4(bar.matrixWorld);
 
@@ -185,19 +182,17 @@ export function handleBarBallCollision(ballNode, barNode, discNode, swingPivot) 
 
         // --- PHYSICS RESPONSE ---
 
-        // 1. Calculate Normal (Direction from Bar -> Ball)
+        // Calculate Normal (Direction from Bar -> Ball)
         const normal = C.clone().sub(closestPoint).normalize();
 
-        // 2. Get velocities
+        // Get velocities
         const vBall = ballNode.velocity.clone();
         const vBar = computeBarVelocity(closestPoint, discNode, swingPivot);
 
-        // 3. Calculate Relative Velocity (Ball relative to Bar)
-        // This makes the physics calculation assume the bar is stationary 
-        // and the ball is hitting it at the combined speed.
+        // Calculate Relative Velocity (Ball relative to Bar)
         const vRel = vBall.clone().sub(vBar);
 
-        // 4. Calculate velocity along the normal
+        // Calculate velocity along the normal
         const velAlongNormal = vRel.dot(normal);
 
         // Only resolve if moving towards each other
@@ -215,7 +210,7 @@ export function handleBarBallCollision(ballNode, barNode, discNode, swingPivot) 
             ballNode.velocity.add(impulse);
             // console.log(ballNode.velocity);
 
-            // 5. Position Correction (prevent sinking/tunneling)
+            // Position Correction (prevent sinking/tunneling)
             // Push the ball out along the normal so it no longer overlaps
             const overlap = minDist - distance;
             // Add a small buffer (0.01) to ensure it clears
@@ -245,11 +240,11 @@ export function handleBallBallCollison(ballA, ballB, onCollision) {
     // Safety check in case radius is not defined
     if (!radiusA || !radiusB) return false;
 
-    // 2. Calculate distance between centers
+    // Calculate distance between centers
     const distance = posA.distanceTo(posB);
     const sumOfRadii = radiusA + radiusB;
     // console.log(distance);
-    // 3. Check for collision
+    // Check for collision
     if (distance > sumOfRadii) {
         return false; // No collision
     }
@@ -269,7 +264,6 @@ export function handleBallBallCollison(ballA, ballB, onCollision) {
     ballA.velocity.x = vA;
     ballB.velocity.x = vB;
 
-    // optional: remove Y & Z components
     ballA.velocity.y = 0;
     ballA.velocity.z = 0;
     ballB.velocity.y = 0;

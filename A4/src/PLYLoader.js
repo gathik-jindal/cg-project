@@ -58,7 +58,7 @@ function normalizeGeometry(positions) {
     let minX = Infinity, minY = Infinity, minZ = Infinity;
     let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
 
-    // 1. Calculate Bounding Box
+    // Calculate Bounding Box
     for (let i = 0; i < positions.length; i += 3) {
         const x = positions[i];
         const y = positions[i + 1];
@@ -73,7 +73,7 @@ function normalizeGeometry(positions) {
         if (z > maxZ) maxZ = z;
     }
 
-    // 2. Calculate Center and Size
+    // Calculate Center and Size
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
     const centerZ = (minZ + maxZ) / 2;
@@ -87,7 +87,7 @@ function normalizeGeometry(positions) {
     // Determine scale factor (target size 1.0)
     const scale = maxDim > 0 ? 1.0 / maxDim : 1.0;
 
-    // 3. Center and Scale in place
+    // Center and Scale in place
     for (let i = 0; i < positions.length; i += 3) {
         positions[i] = (positions[i] - centerX) * scale;
         positions[i + 1] = (positions[i + 1] - centerY) * scale;
@@ -182,7 +182,7 @@ function parsePLY(plyText) {
                     indices.push(parseInt(parts[3]));
 
                 } else if (numVerticesInFace === 4) {
-                    // It's a quad. We must tessellate it (split into two triangles).
+                    // It's a quad. must tessellate it (split into two triangles).
                     // Quad vertices: v0, v1, v2, v3
                     // Triangle 1: (v0, v1, v2)
                     indices.push(parseInt(parts[1])); // v0
@@ -198,7 +198,6 @@ function parsePLY(plyText) {
                 facesRead++;
 
                 if (facesRead === faceCount) {
-                    // We've read all the faces, we can stop.
                     break;
                 }
                 break;
@@ -210,7 +209,6 @@ function parsePLY(plyText) {
     const idxArray = new Uint16Array(indices);
     let normArray = new Float32Array(normals);
 
-    // --- FIX: Center and Scale Geometry ---
     normalizeGeometry(posArray);
 
     // If the file didn't have normals, calculate them now

@@ -69,8 +69,6 @@ void main() {
         
         if (u_lights[i].isSpot > 0.5) {
             // Check angle between Light Direction and Vector to Fragment
-            // We use dot product. u_lights[i].direction must be normalized.
-            // We negate L because L points TO the light, we want vector FROM light.
             float theta = dot(normalize(u_lights[i].direction), -L);
             
             // If we are outside the cone (theta < cutoff), light is 0
